@@ -572,8 +572,20 @@ function useTopicBankRow(idx){
   topicEl.classList.remove('fieldErr');
   const mappedSubject = source.subjectMap[r.subjectLabel];
   const subjectSel = document.getElementById('subject');
-  if(mappedSubject && [...subjectSel.options].some(o => o.value === mappedSubject)) subjectSel.value = mappedSubject;
-  document.querySelectorAll('.examChk').forEach(cb => { if(cb.value.toUpperCase().includes(source.examChkFilter)) cb.checked = true; });
+  // Always set the Subject dropdown, even when this row's subject has no
+  // mapping (e.g. DSSSB's own "Special Education"/"General Awareness"
+  // columns) — previously the dropdown was only ever changed on a match,
+  // so switching from an earlier CTET/BPSC topic to an unmapped DSSSB one
+  // left the stale subject (e.g. "Maths") in place instead of resetting to
+  // Auto-detect as the subjectMap comments above assumed.
+  subjectSel.value = (mappedSubject && [...subjectSel.options].some(o => o.value === mappedSubject))
+    ? mappedSubject : 'Auto-detect';
+  // Replace the exam-type selection rather than adding to it — this used to
+  // only check boxes matching the new source's filter and never unchecked
+  // anything, so picking a DSSSB topic after a CTET one (checked by default
+  // on page load) published notes tagged "CTET Paper I / DSSSB" instead of
+  // just "DSSSB".
+  document.querySelectorAll('.examChk').forEach(cb => { cb.checked = cb.value.toUpperCase().includes(source.examChkFilter); });
   renderRefUrlList();
   doCopy(r.topic, null, msg('topicBankMsg'), 'Topic copied and filled in above — Exam/Subject set to match.');
 }
