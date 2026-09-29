@@ -354,6 +354,14 @@ jobs:
                  "$f" > "published-notes/$slug.json"
               git rm -q "$f"
               git add "published-notes/$slug.json"
+              # Maintain a flat index of published slugs — GitHub Pages can't
+              # directory-list, so reporting/index.html reads this file to know
+              # which published-notes/*.json files exist (mirrors the same
+              # index publish-long-post.yml maintains for published-long-posts/).
+              [ -f "published-notes/index.json" ] || echo "[]" > "published-notes/index.json"
+              jq --arg s "$slug" '(. - [$s]) + [$s]' "published-notes/index.json" > /tmp/notes-pub-index.json \
+                && mv /tmp/notes-pub-index.json "published-notes/index.json"
+              git add "published-notes/index.json"
               write_similarity_note "published-notes/$slug.json"
               write_content_memory "published-notes/$slug.json" "$slug" "$post_id" "$post_link"
             else
