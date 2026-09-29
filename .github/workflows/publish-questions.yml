@@ -121,6 +121,13 @@ jobs:
                     > "published-questions/$slug.result.json"
               mv "$f" "published-questions/$slug.csv"
               git add "published-questions/$slug.csv" "published-questions/$slug.result.json"
+              # Maintain a flat index of imported batches — GitHub Pages can't
+              # directory-list, so reporting/index.html reads this file to know
+              # which published-questions/*.result.json files exist.
+              [ -f "published-questions/index.json" ] || echo "[]" > "published-questions/index.json"
+              jq --arg s "$slug" '(. - [$s]) + [$s]' "published-questions/index.json" > /tmp/questions-pub-index.json \
+                && mv /tmp/questions-pub-index.json "published-questions/index.json"
+              git add "published-questions/index.json"
               echo "✔ $slug imported as draft(s) — review and publish from Quiz App -> Preview."
             else
               echo "::error::WordPress rejected $slug (HTTP $http_code). Response follows. File stays in pending-questions/ — fix the cause and re-run this workflow from the Actions tab."
