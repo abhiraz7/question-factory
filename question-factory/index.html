@@ -295,26 +295,31 @@ function applyPreset(){ if(P().name) document.getElementById('subject').value = 
 const TOPIC_BANK_SOURCES = {
   'bpsc-tre-4': {
     label: 'BPSC TRE 4 — Primary Teacher',
+    examLabel: 'BPSC TRE 4',
     url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/BPSC-TRE-4-Primary-Teacher-SEO-Topics-Hindi-v2.csv',
     subjectMap: { 'हिंदी':'hindi', 'अंग्रेजी':'english', 'गणित':'math', 'विज्ञान':'gs', 'इतिहास':'gs', 'भूगोल':'gs' },
   },
   'dsssb-tgt-cs': {
     label: 'DSSSB 2026 — TGT Computer Science',
+    examLabel: 'DSSSB TGT Computer Science',
     url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Computer-Science-Topics.csv',
     subjectMap: { 'Hindi':'hindi', 'English':'english' },
   },
   'dsssb-domestic-science': {
     label: 'DSSSB 2026 — Domestic Science Teacher',
+    examLabel: 'DSSSB Domestic Science',
     url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Domestic-Science-Teacher-Topics.csv',
     subjectMap: { 'Hindi':'hindi', 'English':'english' },
   },
   'dsssb-tgt-special-ed': {
     label: 'DSSSB 2026 — TGT Special Education Teacher',
+    examLabel: 'DSSSB TGT Special Education',
     url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Special-Education-Teacher-Topics.csv',
     subjectMap: { 'Hindi':'hindi', 'English':'english' },
   },
   'dsssb-special-educator-primary': {
     label: 'DSSSB 2026 — Special Educator (Primary)',
+    examLabel: 'DSSSB Special Educator',
     url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Special-Educator-Primary-Topics.csv',
     subjectMap: { 'Hindi':'hindi', 'English':'english' },
   },
@@ -406,9 +411,25 @@ function useTopicBankRow(idx){
   if(mappedPreset){
     document.getElementById('preset').value = mappedPreset;
     applyPreset();
+  } else {
+    // No bilingual preset fits this row's subject (e.g. DSSSB's own
+    // "Special Education" / "General Awareness" / "Reasoning" columns
+    // aren't Hindi or English). Previously this branch did nothing, so
+    // the Topic column value kept whatever exam's subject was typed in
+    // last — e.g. picking a DSSSB "Special Education" topic silently
+    // left "CTET - Pedagogy" in place and every generated question got
+    // tagged and posted under CTET Pedagogy instead of DSSSB. Always
+    // overwrite it with an exam-qualified value instead of leaving it
+    // stale, and fall back to the Custom preset since none of the
+    // bilingual presets apply.
+    document.getElementById('preset').value = 'custom';
+    document.getElementById('subject').value = `${source.examLabel} - ${r.subjectLabel}`;
+    document.getElementById('promptOut').value = '';
   }
   document.getElementById('promptOut').value = '';
-  show(msg('topicBankMsg'),'ok','Sub-topic filled in above — Subject preset set to match.');
+  show(msg('topicBankMsg'),'ok', mappedPreset
+    ? 'Sub-topic filled in above — Subject preset set to match.'
+    : `Sub-topic filled in above — Topic column value set to "${document.getElementById('subject').value}" (no bilingual preset matches this subject, so Custom was selected — edit it if your site expects a different exact value).`);
 }
 
 function langRules(m){
