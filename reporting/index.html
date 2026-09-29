@@ -160,6 +160,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <div id="coverage-body"><div class="msg">Loading…</div></div>
   </section>
 </main>
+<!-- Topic bank registry (Automation/core/src/topic-bank-sources.mjs,
+     mirrored by gen-topic-bank-sources-browser.mjs) — window.TopicBankSources.
+     Shared with notes-factory, question-factory and update-factory so there
+     is exactly one place to add a new exam/CSV. -->
+<script src="../shared/topic-bank-sources.js"></script>
 <script>
 async function safeFetchJson(url, fallback){
   try{
@@ -310,18 +315,17 @@ async function loadQuestions(){
 }
 
 /* ---------- Topic coverage tab ---------- */
-// Each syllabus checklist lives in "Automation/input sylabuss/" as a plain
-// S.No.,Subject,Topic CSV. `examMatch` is the examType string published
-// notes use for that program — several DSSSB checklists share "DSSSB"
-// because published notes don't record which DSSSB sub-exam they target,
-// so a note's topic text is checked against every DSSSB checklist row.
-const SYLLABUSES = [
-  { file: 'BPSC-TRE-4-Primary-Teacher-SEO-Topics-Hindi-v2.csv', label: 'BPSC TRE 4 — Primary Teacher (Hindi SEO topics)', examMatch: 'BPSC TRE' },
-  { file: 'DSSSB-2026-Special-Educator-Primary-Topics.csv', label: 'DSSSB 2026 — Special Educator (Primary)', examMatch: 'DSSSB' },
-  { file: 'DSSSB-2026-Domestic-Science-Teacher-Topics.csv', label: 'DSSSB 2026 — Domestic Science Teacher', examMatch: 'DSSSB' },
-  { file: 'DSSSB-2026-TGT-Computer-Science-Topics.csv', label: 'DSSSB 2026 — TGT Computer Science', examMatch: 'DSSSB' },
-  { file: 'DSSSB-2026-TGT-Special-Education-Teacher-Topics.csv', label: 'DSSSB 2026 — TGT Special Education Teacher', examMatch: 'DSSSB' }
-];
+// The syllabus registry (labels, CSV paths, examMatch) lives in
+// Automation/core/src/topic-bank-sources.mjs and is shared with
+// notes-factory, question-factory and update-factory via
+// shared/topic-bank-sources.js — add a new exam there, never here.
+// `examMatch` is the examType string published notes use for that program —
+// several DSSSB checklists share "DSSSB" because published notes don't
+// record which DSSSB sub-exam they target, so a note's topic text is
+// checked against every DSSSB checklist row.
+const SYLLABUSES = window.TopicBankSources
+  ? Object.values(window.TopicBankSources.TOPIC_BANK_SOURCES).map(s => ({ csvPath: s.csvPath, label: s.label, examMatch: s.examMatch }))
+  : (console.error('shared/topic-bank-sources.js failed to load — Topic Coverage is unavailable.'), []);
 
 async function loadCoverage(notes){
   const publishedKeys = new Set(
@@ -329,7 +333,7 @@ async function loadCoverage(notes){
   );
 
   const sections = await Promise.all(SYLLABUSES.map(async syl => {
-    const csvText = await safeFetchText(`../Automation/input%20sylabuss/${syl.file}`, null);
+    const csvText = await safeFetchText(`../${syl.csvPath.replace(/ /g, '%20')}`, null);
     if(csvText === null) return { syl, missing: true, rows: [] };
     const rows = parseCsv(csvText).map(r => ({
       subject: r.Subject, topic: r.Topic,

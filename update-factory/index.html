@@ -186,6 +186,21 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <div class="msg" id="pubListMsg"></div>
   <div id="pubListWrap" style="margin-top:10px;max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-sm)"></div>
 
+  <details id="topicBankDetails" ontoggle="openTopicBank()" style="margin-top:12px">
+    <summary>📚 Or browse by syllabus topic — same topic bank as the create-flow tools, already-published topics only</summary>
+    <div>
+      <p class="hint" style="margin-top:8px">Picks straight from the syllabus checklist, but only shows a topic once it's actually published — nothing here is "create new." Tap a topic to jump straight into editing it (skips the AI review/update prompt step below).</p>
+      <label style="margin-top:4px">Exam source</label>
+      <select id="topicBankSource" onchange="loadTopicBankForSource(this.value)"></select>
+      <select id="topicBankSubject" onchange="renderTopicBank()" style="margin-top:8px">
+        <option value="">Pick a subject to browse…</option>
+      </select>
+      <input type="text" id="topicBankSearch" placeholder="Search within this subject…" oninput="renderTopicBank()" style="margin-top:8px">
+      <div id="topicBankList" style="margin-top:8px;max-height:280px;overflow-y:auto"></div>
+      <div class="msg" id="topicBankMsg"></div>
+    </div>
+  </details>
+
   <div class="msg" id="pubSelectedMsg" style="margin-top:14px"></div>
 
   <details id="selectedDetails" style="margin-top:10px"><summary>Selected post's current fields (editable before building the prompt)</summary><div>
@@ -409,6 +424,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      prompt-assembler.mjs, mirrored by gen-prompt-assembler-browser.mjs) —
      window.PromptAssembler, shared with notes-factory/long-post-factory. -->
 <script src="../shared/prompt-assembler.js"></script>
+<!-- Topic bank registry (Automation/core/src/topic-bank-sources.mjs,
+     mirrored by gen-topic-bank-sources-browser.mjs) — window.TopicBankSources.
+     Shared with notes-factory, question-factory and reporting/index.html so
+     there is exactly one place to add a new exam/CSV. -->
+<script src="../shared/topic-bank-sources.js"></script>
 <script>
 "use strict";
 
@@ -566,6 +586,130 @@ function selectPublishedItem(idx){
     corpusField.value = `https://github.com/${GH_OWNER}/${GH_REPO}/tree/main/Automation/ncert-knowledge-base/by-subject`;
   }
   show(msg('pubSelectedMsg'),'ok', `Selected "${old.seo.slug}" (${it.contentType==='note'?'Note':'Long Post'}, WordPress post #${it.postId}). Review the fields below, then tap "Build update prompt".`);
+}
+
+/* ================= Direct WYSIWYG edit (skips the AI prompt round-trip) =================
+   selectPublishedItem() above only stages the post as the "before" reference
+   for the review/update PROMPT — state.bodyHtml itself stays empty until an
+   AI reply is parsed at step 2. For a client who just wants to fix a typo or
+   reword a sentence, forcing a full prompt-build -> paste-into-AI -> paste-
+   reply-back round trip is unnecessary: Step 3's preview iframe is already a
+   working WYSIWYG editor (see attachPreviewEditing() below — the rendered
+   preview is contenteditable and syncs straight back into state.bodyHtml).
+   This jumps straight there with the post's real content already loaded, and
+   without going through nav()'s step-0/1 gates (skipping them is the point). */
+function editPublishedDirectly(idx){
+  selectPublishedItem(idx);
+  const it = publishedItems[idx];
+  const old = it.data;
+  state.seo = JSON.parse(JSON.stringify(old.seo));
+  state.bodyHtml = old.bodyHtml;
+  state.publisherNotes = old.publisherNotes || '';
+  state.contentMemory = old.contentMemory || null;
+  state.parsed = { seo: state.seo, bodyHtml: state.bodyHtml, publisherNotes: state.publisherNotes, contentMemory: state.contentMemory, warnings: [] };
+  state.topic = old.topic || ''; state.examType = old.examType || ''; state.subject = old.subject || 'Auto-detect';
+  state.hindiPercent = old.hindiPercent || 70;
+  state.featuredImage = null;
+  cur = 2;
+  render();
+  show(msg('pubSelectedMsg'),'ok', `Editing "${old.seo.slug}" directly — skipped the AI prompt step. Use the preview below like a document, then Auto-save when ready.`);
+}
+
+/* ---------- Topic bank (syllabus browsing, published-only) ----------
+   Same registry as notes-factory/question-factory (Automation/core/src/
+   topic-bank-sources.mjs via shared/topic-bank-sources.js), but every row
+   is cross-checked against publishedItems first — a topic only shows up
+   here once it's actually live, matched the same way reporting/index.html's
+   Topic Coverage tab does: exact topic-text + examMatch. */
+const TOPIC_BANK_SOURCES = window.TopicBankSources
+  ? window.TopicBankSources.TOPIC_BANK_SOURCES
+  : (console.error('shared/topic-bank-sources.js failed to load — Topic bank is unavailable.'), {});
+let topicBankRows = null;
+let topicBankLoadedSource = null;
+
+function splitCsvLine(line){
+  const out = []; let cur2 = ''; let inQuotes = false;
+  for(let i=0; i<line.length; i++){
+    const c = line[i];
+    if(inQuotes){
+      if(c === '"'){ if(line[i+1] === '"'){ cur2 += '"'; i++; } else inQuotes = false; }
+      else cur2 += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ',') { out.push(cur2); cur2 = ''; }
+      else cur2 += c;
+    }
+  }
+  out.push(cur2);
+  return out;
+}
+function parseTopicBankCsv(text){
+  const lines = text.replace(/^﻿/,'').split(/\r?\n/).filter(l => l.trim());
+  const header = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+  const subjectIdx = header.indexOf('subject');
+  const topicIdx = header.indexOf('topic');
+  if(subjectIdx === -1 || topicIdx === -1) throw new Error('CSV is missing a Subject or Topic column');
+  return lines.slice(1).map(line => {
+    const c = splitCsvLine(line);
+    return { subjectLabel: (c[subjectIdx]||'').trim(), topic: (c[topicIdx]||'').trim() };
+  }).filter(r => r.topic);
+}
+async function loadTopicBank(sourceKey){
+  if(topicBankLoadedSource === sourceKey && topicBankRows) return topicBankRows;
+  const source = TOPIC_BANK_SOURCES[sourceKey];
+  const res = await fetch(source.url);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  topicBankRows = parseTopicBankCsv(await res.text());
+  topicBankLoadedSource = sourceKey;
+  return topicBankRows;
+}
+async function openTopicBank(){
+  const details = document.getElementById('topicBankDetails');
+  if(!details.open) return;
+  if(!publishedItems) await loadPublishedList();
+  const sourceSel = document.getElementById('topicBankSource');
+  if(!sourceSel.options.length){
+    sourceSel.innerHTML = Object.entries(TOPIC_BANK_SOURCES).map(([key,s]) => `<option value="${key}">${s.label}</option>`).join('');
+  }
+  await loadTopicBankForSource(sourceSel.value);
+}
+async function loadTopicBankForSource(sourceKey){
+  try{
+    show(msg('topicBankMsg'),'warn','Loading topic bank…');
+    const rows = await loadTopicBank(sourceKey);
+    const subjects = [...new Set(rows.map(r=>r.subjectLabel))];
+    document.getElementById('topicBankSubject').innerHTML = '<option value="">Pick a subject to browse…</option>'
+      + subjects.map(s => `<option value="${s}">${s} (${rows.filter(r=>r.subjectLabel===s).length})</option>`).join('');
+    document.getElementById('topicBankSubject').value = '';
+    document.getElementById('topicBankSearch').value = '';
+    renderTopicBank();
+    show(msg('topicBankMsg'),'ok', rows.length+' topics in this syllabus — pick a subject above; only already-published topics will be listed.');
+  }catch(e){
+    show(msg('topicBankMsg'),'bad','Could not load the topic bank: '+e.message);
+  }
+}
+function findPublishedIndexForTopic(examMatch, topicText){
+  if(!publishedItems) return -1;
+  return publishedItems.findIndex(it => (it.examType||'').trim() === examMatch && (it.data.topic||'').trim() === topicText.trim());
+}
+function renderTopicBank(){
+  const listEl = document.getElementById('topicBankList');
+  if(!topicBankRows){ listEl.innerHTML = ''; return; }
+  const subj = document.getElementById('topicBankSubject').value;
+  if(!subj){ listEl.innerHTML = '<p class="hint">Pick a subject above to see its topics.</p>'; return; }
+  const q = document.getElementById('topicBankSearch').value.trim().toLowerCase();
+  const source = TOPIC_BANK_SOURCES[topicBankLoadedSource];
+  const rows = topicBankRows
+    .map((r,i) => ({...r, idx:i}))
+    .filter(r => r.subjectLabel === subj && (!q || r.topic.toLowerCase().includes(q)))
+    .map(r => ({...r, pubIdx: findPublishedIndexForTopic(source.examMatch, r.topic)}))
+    .filter(r => r.pubIdx !== -1); // unpublished topics don't belong in an UPDATE tool — they show up in notes-factory/question-factory's create-flow topic bank instead
+  listEl.innerHTML = rows.length
+    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:13px">${r.topic.replace(/</g,'&lt;')}</span>
+        <button class="btn small ghost" onclick="tryRun(()=>editPublishedDirectly(${r.pubIdx}))">✏️ Edit</button>
+      </div>`).join('')
+    : '<p class="hint">No published topics in this subject yet.</p>';
 }
 
 /* ---------- navigation ---------- */

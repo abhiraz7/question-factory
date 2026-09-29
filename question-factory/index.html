@@ -236,9 +236,14 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <button id="nextBtn" onclick="nav(1)">Next →</button>
 </nav>
 
+<!-- Topic bank registry (Automation/core/src/topic-bank-sources.mjs,
+     mirrored by gen-topic-bank-sources-browser.mjs) — window.TopicBankSources.
+     Shared with notes-factory, update-factory and reporting/index.html so
+     there is exactly one place to add a new exam/CSV. -->
+<script src="../shared/topic-bank-sources.js"></script>
 <script>
 "use strict";
-const HEADER = ["topic","question_en","question_hi","option1_en","option1_hi","option2_en","option2_hi","option3_en","option3_hi","option4_en","option4_hi","correct","explanation_en","explanation_hi","exam_type_year"];
+const HEADER =["topic","question_en","question_hi","option1_en","option1_hi","option2_en","option2_hi","option3_en","option3_hi","option4_en","option4_hi","correct","explanation_en","explanation_hi","exam_type_year"];
 var rows = [];
 var cur = 0;
 
@@ -291,39 +296,13 @@ const PRESETS = {
 function P(){ return PRESETS[document.getElementById('preset').value]; }
 function applyPreset(){ if(P().name) document.getElementById('subject').value = P().name; document.getElementById('promptOut').value=''; }
 
-/* ---------- topic bank (same source CSVs as the notes factory) ---------- */
-const TOPIC_BANK_SOURCES = {
-  'bpsc-tre-4': {
-    label: 'BPSC TRE 4 — Primary Teacher',
-    examLabel: 'BPSC TRE 4',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/BPSC-TRE-4-Primary-Teacher-SEO-Topics-Hindi-v2.csv',
-    subjectMap: { 'हिंदी':'hindi', 'अंग्रेजी':'english', 'गणित':'math', 'विज्ञान':'gs', 'इतिहास':'gs', 'भूगोल':'gs' },
-  },
-  'dsssb-tgt-cs': {
-    label: 'DSSSB 2026 — TGT Computer Science',
-    examLabel: 'DSSSB TGT Computer Science',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Computer-Science-Topics.csv',
-    subjectMap: { 'Hindi':'hindi', 'English':'english' },
-  },
-  'dsssb-domestic-science': {
-    label: 'DSSSB 2026 — Domestic Science Teacher',
-    examLabel: 'DSSSB Domestic Science',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Domestic-Science-Teacher-Topics.csv',
-    subjectMap: { 'Hindi':'hindi', 'English':'english' },
-  },
-  'dsssb-tgt-special-ed': {
-    label: 'DSSSB 2026 — TGT Special Education Teacher',
-    examLabel: 'DSSSB TGT Special Education',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Special-Education-Teacher-Topics.csv',
-    subjectMap: { 'Hindi':'hindi', 'English':'english' },
-  },
-  'dsssb-special-educator-primary': {
-    label: 'DSSSB 2026 — Special Educator (Primary)',
-    examLabel: 'DSSSB Special Educator',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Special-Educator-Primary-Topics.csv',
-    subjectMap: { 'Hindi':'hindi', 'English':'english' },
-  },
-};
+/* ---------- topic bank (same source registry as notes-factory) ----------
+   Lives in Automation/core/src/topic-bank-sources.mjs and is shared with
+   notes-factory, update-factory and reporting/index.html via
+   shared/topic-bank-sources.js — add a new exam there, never here. */
+const TOPIC_BANK_SOURCES = window.TopicBankSources
+  ? window.TopicBankSources.TOPIC_BANK_SOURCES
+  : (console.error('shared/topic-bank-sources.js failed to load — Topic bank is unavailable.'), {});
 let topicBankRows = null;
 let topicBankLoadedSource = null;
 function splitCsvLine(line){
@@ -407,24 +386,19 @@ function useTopicBankRow(idx){
   if(!r) return;
   const source = TOPIC_BANK_SOURCES[topicBankLoadedSource];
   document.getElementById('subtopic').value = r.topic;
-  const mappedPreset = source.subjectMap[r.subjectLabel];
+  const mappedPreset = source.questionPresetMap[r.subjectLabel];
   if(mappedPreset){
     document.getElementById('preset').value = mappedPreset;
     applyPreset();
   } else {
     // No bilingual preset fits this row's subject (e.g. DSSSB's own
-    // "Special Education" / "General Awareness" / "Reasoning" columns
-    // aren't Hindi or English). Previously this branch did nothing, so
-    // the Topic column value kept whatever exam's subject was typed in
-    // last — e.g. picking a DSSSB "Special Education" topic silently
-    // left "CTET - Pedagogy" in place and every generated question got
-    // tagged and posted under CTET Pedagogy instead of DSSSB. Always
-    // overwrite it with an exam-qualified value instead of leaving it
-    // stale, and fall back to the Custom preset since none of the
-    // bilingual presets apply.
+    // "Special Education"/"General Awareness"/"Reasoning" columns aren't
+    // Hindi or English). Always overwrite the Topic column value with an
+    // exam-qualified label instead of leaving whatever was typed for a
+    // previous exam, which used to silently mis-tag DSSSB/BPSC questions
+    // as the last CTET subject used.
     document.getElementById('preset').value = 'custom';
-    document.getElementById('subject').value = `${source.examLabel} - ${r.subjectLabel}`;
-    document.getElementById('promptOut').value = '';
+    document.getElementById('subject').value = `${source.fallbackLabel} - ${r.subjectLabel}`;
   }
   document.getElementById('promptOut').value = '';
   show(msg('topicBankMsg'),'ok', mappedPreset
