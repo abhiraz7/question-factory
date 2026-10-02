@@ -1,0 +1,76 @@
+{
+  "schema_version": "1",
+  "source": {
+    "title": "Piaget's Theory of Cognitive Development — CDP (Child Development & Pedagogy)",
+    "type": "textbook",
+    "subject": "CDP",
+    "language": "en",
+    "origin": "NCERT/SCERT CDP reference chapter on cognitive development theories, user-uploaded PDF, packaged by ChatGPT for CTET/BPSC TRE prep (sample fixture, not a verbatim textbook excerpt)."
+  },
+  "chunks": [
+    {
+      "id": "cdp-piaget-001",
+      "text": "Jean Piaget proposed that children construct their understanding of the world through a sequence of four distinct stages of cognitive development: sensorimotor, preoperational, concrete operational, and formal operational. Each stage represents a qualitatively different way of thinking, not just 'more knowledge' than the previous stage.",
+      "page": 112,
+      "section": "Introduction to Piaget's Stage Theory",
+      "topics": ["cognitive development", "Piaget"],
+      "concepts": ["stage theory", "qualitative change", "constructivism"]
+    },
+    {
+      "id": "cdp-piaget-002",
+      "text": "The sensorimotor stage spans roughly birth to 2 years. The infant's intelligence is expressed through motor activity and sensory experience, without the use of symbols or language. A key achievement of this stage is object permanence — the understanding that objects continue to exist even when they cannot be seen, heard, or touched.",
+      "page": 113,
+      "section": "Sensorimotor Stage (0-2 years)",
+      "topics": ["cognitive development", "Piaget", "sensorimotor stage"],
+      "concepts": ["object permanence", "motor intelligence"]
+    },
+    {
+      "id": "cdp-piaget-003",
+      "text": "The preoperational stage spans roughly 2 to 7 years. Children begin to use symbols and language but still lack logical reasoning. This stage is marked by egocentrism (difficulty seeing a situation from another person's point of view) and centration (focusing on only one aspect of a situation at a time, as demonstrated in Piaget's classic conservation experiments).",
+      "page": 114,
+      "section": "Preoperational Stage (2-7 years)",
+      "topics": ["cognitive development", "Piaget", "preoperational stage"],
+      "concepts": ["egocentrism", "centration", "conservation", "symbolic thought"]
+    },
+    {
+      "id": "cdp-piaget-004",
+      "text": "The concrete operational stage spans roughly 7 to 11 years. Children in this stage can think logically about concrete events and objects, and they master conservation tasks (understanding that quantity does not change when its shape or arrangement changes). However, abstract and hypothetical reasoning remains difficult at this stage.",
+      "page": 115,
+      "section": "Concrete Operational Stage (7-11 years)",
+      "topics": ["cognitive development", "Piaget", "concrete operational stage"],
+      "concepts": ["conservation", "logical operations", "reversibility"]
+    },
+    {
+      "id": "cdp-piaget-005",
+      "text": "The formal operational stage begins around age 11 and continues into adulthood. Adolescents in this stage can reason abstractly, think hypothetically, and systematically test possibilities — the kind of reasoning needed for algebra, scientific hypothesis-testing, and moral or philosophical argument.",
+      "page": 116,
+      "section": "Formal Operational Stage (11+ years)",
+      "topics": ["cognitive development", "Piaget", "formal operational stage"],
+      "concepts": ["abstract reasoning", "hypothetico-deductive reasoning"]
+    },
+    {
+      "id": "cdp-piaget-006",
+      "text": "A common misconception tested in CTET-style questions is treating Piaget's stages as strictly age-locked. Piaget himself noted that the ages are approximate and that the sequence of stages (the order in which they occur) is what is considered invariant, not the exact chronological age at which a child enters each stage.",
+      "page": 117,
+      "section": "Common Misconceptions and Exam Pointers",
+      "topics": ["cognitive development", "Piaget", "exam pointers"],
+      "concepts": ["invariant sequence", "individual variation"]
+    },
+    {
+      "id": "cdp-piaget-007",
+      "text": "Two central processes drive movement between stages: assimilation (fitting new information into existing mental schemas) and accommodation (modifying existing schemas, or creating new ones, when new information does not fit). The balance between the two is called equilibration.",
+      "page": 118,
+      "section": "Assimilation, Accommodation and Equilibration",
+      "topics": ["cognitive development", "Piaget", "schema theory"],
+      "concepts": ["assimilation", "accommodation", "equilibration", "schema"]
+    },
+    {
+      "id": "cdp-piaget-008",
+      "text": "Educational implications of Piaget's theory emphasize readiness: a teacher should pitch tasks at a level matched to the child's current stage rather than trying to accelerate abstract reasoning in a preoperational child. Hands-on, concrete activities are recommended well into the concrete operational years before introducing fully abstract tasks.",
+      "page": 119,
+      "section": "Classroom Applications of Piaget's Theory",
+      "topics": ["cognitive development", "Piaget", "classroom application"],
+      "concepts": ["readiness", "developmentally appropriate practice"]
+    }
+  ]
+}
