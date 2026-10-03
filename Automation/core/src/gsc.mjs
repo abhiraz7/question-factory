@@ -31,6 +31,18 @@
 // public function, never fabricates a query list, and never silently
 // retries into a hang. A caller (topic-state.mjs) can always tell "Search
 // Console was actually queried" apart from "nothing to show yet".
+//
+// Visibility rule (added after a real incident: a wrong credential sat
+// undiagnosed for a day because every failure mode produced the same
+// generic "expired/revoked refresh token, or a network error" guess, both
+// in the returned `note` and in a GitHub Actions log that said nothing at
+// all — the only way to see anything was to manually fetch and decode the
+// committed output file after the fact). Every failure branch below does
+// two things: (1) captures Google's own `error`/`error_description` from
+// the response body when one exists, instead of discarding it, and (2)
+// calls console.error/console.log so the reason is visible directly in
+// whatever invoked this (a GitHub Actions run log, a local `node` run)
+// without needing to inspect the return value at all.
 
 import { tokenize } from './bm25.mjs';
 
@@ -69,9 +81,37 @@ function defaultDateRange(lookbackDays = DEFAULT_LOOKBACK_DAYS, lagDays = DEFAUL
 }
 
 /**
+ * Best-effort extraction of Google's own error reason from a non-2xx JSON
+ * body, in whichever shape that endpoint uses (OAuth errors look like
+ * {error, error_description}; most Google API errors look like
+ * {error: {code, message, status}}). Never throws — an unparseable body
+ * (HTML error page, empty response) just yields a generic fallback built
+ * from the HTTP status instead.
+ */
+async function extractErrorDetail(res) {
+  try {
+    const body = await res.json();
+    if (typeof body.error === 'string') {
+      return `${body.error}${body.error_description ? ': ' + body.error_description : ''}`;
+    }
+    if (body.error && typeof body.error === 'object') {
+      return `${body.error.status || res.status}: ${body.error.message || 'no message'}`;
+    }
+  } catch (e) {
+    // fall through to the generic status-based message below
+  }
+  return `HTTP ${res.status}`;
+}
+
+/**
  * Exchanges the long-lived refresh token for a short-lived access token.
- * Returns null (never throws) on any failure — missing/revoked credentials,
- * network error, or a non-2xx response all degrade the same way.
+ * Returns {accessToken: null, errorDetail} on any failure (never throws) —
+ * errorDetail is Google's own reason when one came back (e.g.
+ * "invalid_grant: Token has been expired or revoked.", or
+ * "invalid_client: The OAuth client was not found." — exactly the signal
+ * needed to tell "wrong refresh token" apart from "wrong client
+ * id/secret" apart from "this wasn't a refresh token at all"), or a
+ * network-error message otherwise.
  */
 async function getAccessToken({ clientId, clientSecret, refreshToken }) {
   try {
@@ -85,19 +125,29 @@ async function getAccessToken({ clientId, clientSecret, refreshToken }) {
         grant_type: 'refresh_token',
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errorDetail = await extractErrorDetail(res);
+      console.error(`[gsc.mjs] OAuth token exchange rejected by Google: ${errorDetail}`);
+      return { accessToken: null, errorDetail };
+    }
     const body = await res.json();
-    return body.access_token || null;
+    if (!body.access_token) {
+      console.error('[gsc.mjs] OAuth token exchange returned 200 but no access_token in the body — unexpected response shape.');
+      return { accessToken: null, errorDetail: 'response had no access_token' };
+    }
+    return { accessToken: body.access_token, errorDetail: null };
   } catch (e) {
-    return null;
+    console.error(`[gsc.mjs] OAuth token exchange network error: ${e.message}`);
+    return { accessToken: null, errorDetail: `network error: ${e.message}` };
   }
 }
 
 /**
- * Raw searchAnalytics.query call, one dimension ("query"). Returns null
- * (never throws) on any failure so the caller can degrade the same way
- * regardless of what went wrong (bad site URL, API not enabled, rate
- * limit, network error).
+ * Raw searchAnalytics.query call, one dimension ("query"). Returns
+ * {rows: null, errorDetail} on any failure (never throws), with Google's
+ * own error reason when available (e.g. "PERMISSION_DENIED: ..." for an
+ * account that lacks access to this property, or "NOT_FOUND: ..." for a
+ * GSC_SITE_URL that doesn't match any verified property).
  */
 async function querySearchAnalytics({ siteUrl, accessToken, startDate, endDate, rowLimit }) {
   try {
@@ -112,11 +162,16 @@ async function querySearchAnalytics({ siteUrl, accessToken, startDate, endDate, 
         body: JSON.stringify({ startDate, endDate, dimensions: ['query'], rowLimit }),
       }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errorDetail = await extractErrorDetail(res);
+      console.error(`[gsc.mjs] searchAnalytics.query rejected by Google for site "${siteUrl}": ${errorDetail}`);
+      return { rows: null, errorDetail };
+    }
     const body = await res.json();
-    return Array.isArray(body.rows) ? body.rows : [];
+    return { rows: Array.isArray(body.rows) ? body.rows : [], errorDetail: null };
   } catch (e) {
-    return null;
+    console.error(`[gsc.mjs] searchAnalytics.query network error: ${e.message}`);
+    return { rows: null, errorDetail: `network error: ${e.message}` };
   }
 }
 
@@ -168,19 +223,23 @@ export async function fetchLearnerSignals(ctx = {}, options = {}) {
   });
 
   if (!clientId || !clientSecret || !refreshToken) {
-    return empty('No GOOGLE_OAUTH_* credentials in the environment — Search Console was not queried this run.');
+    const note = 'No GOOGLE_OAUTH_* credentials in the environment — Search Console was not queried this run.';
+    console.log(`[gsc.mjs] SKIPPED: ${note}`);
+    return empty(note);
   }
   if (!siteUrl) {
-    return empty('No GSC_SITE_URL configured — Search Console was not queried this run. Set it to the exact property string Search Console shows (e.g. a URL-prefix property like "https://example.com/" or a domain property like "sc-domain:example.com").');
+    const note = 'No GSC_SITE_URL configured — Search Console was not queried this run. Set it to the exact property string Search Console shows (e.g. a URL-prefix property like "https://example.com/" or a domain property like "sc-domain:example.com").';
+    console.log(`[gsc.mjs] SKIPPED: ${note}`);
+    return empty(note);
   }
 
-  const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
+  const { accessToken, errorDetail: tokenError } = await getAccessToken({ clientId, clientSecret, refreshToken });
   if (!accessToken) {
-    return empty('OAuth token exchange failed (expired/revoked refresh token, or a network error) — Search Console was not queried this run.');
+    return empty(`OAuth token exchange failed: ${tokenError}. Search Console was not queried this run. (If this says "invalid_client" or "unauthorized_client", GOOGLE_OAUTH_CLIENT_ID/SECRET don't match the app that issued the refresh token. If it says "invalid_grant", the refresh token itself is wrong, expired, or revoked — note that an API key is NOT a refresh token and will fail exactly this way.)`);
   }
 
   const { startDate, endDate } = defaultDateRange(options.lookbackDays, options.lagDays);
-  const rows = await querySearchAnalytics({
+  const { rows, errorDetail: queryError } = await querySearchAnalytics({
     siteUrl,
     accessToken,
     startDate,
@@ -188,7 +247,7 @@ export async function fetchLearnerSignals(ctx = {}, options = {}) {
     rowLimit: options.rowLimit || DEFAULT_ROW_LIMIT,
   });
   if (rows === null) {
-    return empty(`Search Console API call failed for site "${siteUrl}" — check GSC_SITE_URL matches a property this account has access to, and that the Search Console API is enabled.`);
+    return empty(`Search Console API call failed for site "${siteUrl}": ${queryError}. (A PERMISSION_DENIED here usually means the Google account behind the refresh token isn't a verified owner/user of this exact property in Search Console; a NOT_FOUND usually means GSC_SITE_URL doesn't exactly match a property that account has.)`);
   }
 
   const queryText = [ctx.topic, ctx.subject, ctx.exam].filter(Boolean).join(' ');
@@ -219,14 +278,17 @@ export async function fetchLearnerSignals(ctx = {}, options = {}) {
   const totalImpressions = matched.reduce((s, r) => s + r.impressions, 0);
   const confidence = matched.length ? Math.round(Math.min(1, totalImpressions / 500) * 100) / 100 : 0;
 
+  const note = matched.length
+    ? `${matched.length} matching quer${matched.length === 1 ? 'y' : 'ies'} found for this topic in the ${startDate} to ${endDate} window.`
+    : `Search Console was queried successfully, but no query in the ${startDate} to ${endDate} window overlapped this topic's words (${rows.length} total rows fetched for the property).`;
+  console.log(`[gsc.mjs] OK: ${note}`);
+
   return {
     dataAvailable: true,
     queries: matched,
     weakCoverage,
     dateRange: { startDate, endDate },
     confidence,
-    note: matched.length
-      ? `${matched.length} matching quer${matched.length === 1 ? 'y' : 'ies'} found for this topic in the ${startDate} to ${endDate} window.`
-      : `Search Console was queried successfully, but no query in the ${startDate} to ${endDate} window overlapped this topic's words.`,
+    note,
   };
 }
