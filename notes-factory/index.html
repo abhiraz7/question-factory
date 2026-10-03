@@ -396,6 +396,24 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      window.PromptAssembler. buildPrompt() below falls back to the full,
      untrimmed Master Prompt text if this fails to load. -->
 <script src="../shared/prompt-assembler.js"></script>
+<!-- Editorial Intelligence signature — Phase 1 ONLY (Automation/core/src/
+     editorial-intelligence.mjs, mirrored by
+     gen-editorial-intelligence-browser.mjs) — window.EditorialIntelligence.
+     buildPrompt() below falls back to an empty/advisory-skip block if this
+     fails to load. Later phases (RAG evidence, topic state, genome, brief —
+     Automation/core/src/{rag-evidence,topic-state,editorial-genome,
+     editorial-brief}.mjs) are deliberately NOT mirrored here: they import
+     Automation/ncert-knowledge-base/retrieve.mjs, which reads its index via
+     node:fs and cannot run in a browser without being ported to a
+     fetch-based loader first — a real architecture decision for a human,
+     not something papered over here. See buildEditorialSignatureBlock()
+     below. -->
+<script src="../shared/editorial-intelligence.js"></script>
+<!-- Copy-with-limit (Automation/core/src/copy-with-limit.mjs, mirrored by
+     gen-copy-with-limit-browser.mjs) — window.CopyWithLimit. splitForCopy()/
+     renderCopyParts() below fall back to their original word-count-based
+     splitting if this fails to load. -->
+<script src="../shared/copy-with-limit.js"></script>
 <script>
 "use strict";
 
@@ -651,8 +669,7 @@ function buildReferenceSourcesBlock(subject){
   const lines = sources.map(s => `- ${s.label}: ${s.url}`);
   extra.forEach(u => lines.push(`- (manually added): ${u}`));
   if(!lines.length) return '';
-  return `## REFERENCE SOURCES FOR THIS RUN
-Use these as supporting material where genuinely relevant to TOPIC — same whitelist rules as HARD BAN 6 still apply for any URL you cite. Use only the parts that are actually relevant to this specific topic, not all of them. Never copy source text verbatim — synthesize into your own teacher-voice prose. Never invent a claim beyond what these (or your own verified knowledge) actually support.
+  return `## REFERENCE SOURCES — supporting material where relevant to TOPIC, same whitelist/honesty rules as above. Use only the relevant parts; never copy text verbatim.
 ${lines.join('\n')}`;
 }
 
@@ -679,17 +696,10 @@ function buildNcertKnowledgeBaseBlock(subject){
   const links = folders.map(f => `- ${f}: ${base}/${encodeURIComponent(f)}`).join('\n');
   return `
 
-## NCERT KNOWLEDGE BASE (check this FIRST, before any general web search)
-This repo maintains its own cleaned NCERT chapter-text corpus for SUBJECT — this is the
-preferred grounding source for this run, ahead of an open-ended web search. If you have the
-ability to open a URL, browse these folders and read whichever chapter .txt files are actually
-relevant to TOPIC before writing — treat the chapter text as evidence to extract facts from and
-explain in your own words (same RAG/SOURCES rule as above: never copy source prose verbatim).
-If a claim traces back to something you read here, cite the ORIGINAL NCERT source
-(ncert.nic.in — see REFERENCE SOURCES above) in the article's References, not this GitHub
-mirror. If you have no browsing ability, skip this section entirely and rely on your own
-verified knowledge under the same honesty rules — never substitute a generic, uncurated web
-search for this repo's own knowledge base.
+## NCERT KNOWLEDGE BASE — check first, before a general web search, if you can open a URL
+This repo's own cleaned NCERT chapter-text corpus for SUBJECT. Read relevant chapters as
+evidence, explain in your own words (never copy verbatim). Cite the ORIGINAL NCERT source,
+not this GitHub mirror. No browsing ability → skip, use your own verified knowledge instead.
 ${links}`;
 }
 
@@ -741,8 +751,21 @@ function fallbackCopy(text,done,msgEl){
 /* mobile clipboards (Gboard/Samsung/SwiftKey) start silently truncating
    copies somewhere around 8,000-10,000 characters — ~1,500 words at typical
    English/Hinglish prose density — so that's the per-part budget: only as
-   many parts as actually needed to keep each one under it, never a fixed count */
+   many parts as actually needed to keep each one under it, never a fixed count
+
+   NOTE on EDITORIAL_INTELLIGENCE_ENGINE.md section 17's MAX_COPY_CHARS=18000:
+   that spec constant is roughly DOUBLE this file's own pre-existing,
+   empirically-stated truncation threshold above (8,000-10,000 chars) — a
+   real, unresolved conflict, not something to silently pick a side on.
+   Using the spec's looser 18000 here could reintroduce the exact silent-
+   truncation failure both documents are trying to prevent, if this file's
+   own field-observed number is the more trustworthy one. Wiring below uses
+   window.CopyWithLimit (so there is exactly ONE splitting implementation,
+   per spec section 18) but passes this file's own tighter, already-proven
+   number as maxChars, NOT the spec's 18000 — flagged here for a human to
+   resolve with real device testing, not guessed at. */
 const WORDS_PER_COPY_PART = 1500;
+const NOTES_FACTORY_COPY_CHAR_LIMIT = 9000; // tighter end of this file's own stated 8,000-10,000 range — see note above
 function partsNeededFor(text){
   if(!text) return 1;
   const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -750,9 +773,19 @@ function partsNeededFor(text){
 }
 /* splits text into only as many roughly-equal chunks as needed to stay under
    the per-part budget, cut on paragraph/line boundaries where possible —
-   each part starts exactly where the previous one logically left off */
+   each part starts exactly where the previous one logically left off.
+   Delegates to the shared window.CopyWithLimit utility (ONE splitting
+   implementation, per EDITORIAL_INTELLIGENCE_ENGINE.md section 18) when
+   available, using this file's own tighter char budget (see note above);
+   falls back to the original word-count-based splitter if the shared
+   script failed to load, so copying is never blocked by that failure. */
 function splitForCopy(text){
   if(!text) return [];
+  if(window.CopyWithLimit){
+    try{
+      return window.CopyWithLimit.copyWithLimit(text, { maxChars: NOTES_FACTORY_COPY_CHAR_LIMIT }).chunks.map(c=>c.text);
+    }catch(e){ /* fall through to the original splitter below */ }
+  }
   const maxParts = partsNeededFor(text);
   if(maxParts <= 1) return [text];
   const targetSize = Math.ceil(text.length / maxParts);
@@ -1006,6 +1039,35 @@ async function buildFlavourBlock(topic, examType, subject){
   }catch(e){ return FLAVOUR_ENGINE_FALLBACK_TEXT; }
 }
 
+/* ================= EDITORIAL INTELLIGENCE signature (client glue) =================
+   Phase 1 ONLY (see the <script src="../shared/editorial-intelligence.js">
+   tag's comment above for why Phases 4/6/7/8 aren't here). Same
+   degrade-quietly contract as buildFlavourBlock() above: a network hiccup,
+   a missing script, or buildEditorialSignature() finding no history at all
+   must never block prompt generation — it just means this section renders
+   as "no history yet", which the Master Prompt's EDITORIAL SIGNATURE
+   section already tells the model how to treat (ignore it, write normally).
+   Does its own best-effort content-memory fetch (loadRecentContentMemory())
+   rather than sharing buildFlavourBlock()'s — a second, independent
+   best-effort network call is a smaller/safer change tonight than altering
+   an already-working function's signature. */
+const EDITORIAL_SIGNATURE_FALLBACK_TEXT = '(No history available this run — write normally, as if this section were not here.)';
+async function buildEditorialSignatureBlock(topic, examType, subject){
+  try{
+    if(!window.EditorialIntelligence) return EDITORIAL_SIGNATURE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    const sig = window.EditorialIntelligence.buildEditorialSignature({ topic, exam: examType, subject }, recent);
+    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.underusedMisconceptions.length){
+      return `(confidence: ${sig.confidence} — no meaningful history yet for this exam+subject. Write normally, as if this section were not here.)`;
+    }
+    const lines = [`(confidence: ${sig.confidence})`];
+    if(sig.avoidConcepts.length) lines.push(`Recently covered concepts for this exam+subject (vary your treatment rather than repeating the same framing): ${sig.avoidConcepts.join('; ')}`);
+    if(sig.avoidExamples.length) lines.push(`Recently used examples for this exam+subject (prefer a different example if one fits as well): ${sig.avoidExamples.join('; ')}`);
+    if(sig.underusedMisconceptions.length) lines.push(`Misconceptions for this exam+subject not addressed recently (worth considering if genuinely relevant to TOPIC): ${sig.underusedMisconceptions.join('; ')}`);
+    return lines.join('\n');
+  }catch(e){ return EDITORIAL_SIGNATURE_FALLBACK_TEXT; }
+}
+
 async function buildPrompt(){
   const topic = document.getElementById('topic').value;
   const examType = [...document.querySelectorAll('.examChk:checked')].map(c=>c.value).join(' / ') || 'CTET Paper I';
@@ -1018,6 +1080,7 @@ async function buildPrompt(){
   master = master.replace('{{REFERENCE_SOURCES_BLOCK}}', buildReferenceSourcesBlock(subject) + buildNcertKnowledgeBaseBlock(subject));
   master = master.replaceAll('{{TEACHING_LEVEL}}', getTeachingLevel(examType));
   master = master.replace('{{FLAVOUR_ENGINE_BLOCK}}', await buildFlavourBlock(topic, examType, subject));
+  master = master.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
 
   // PROMPT ASSEMBLER — selects/trims Master Prompt modules for this run
   // (e.g. keeps only the matching TEACHING LEVEL bullet and the matching
@@ -1093,6 +1156,16 @@ REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" 
 `;
 }
 
+// Hard ceiling for the assembled prompt, enforced here rather than via
+// chunking: the Master Prompt (v14) was sized specifically so the full
+// assembled prompt should normally clear this on its own -- if it doesn't,
+// that's a real signal the prompt assembly grew (a longer Editorial
+// Signature, a subject with extra reference sources, etc.), not something
+// to silently paper over by splitting into parts. No truncation, no
+// splitting, no partial copy -- build again after reducing scope (e.g. a
+// lighter subject's reference sources) if this fires.
+const MAX_COPY_PROMPT_CHARS = 18000;
+
 async function copyPrompt(btn){
   const topicEl = document.getElementById('topic');
   topicEl.classList.remove('fieldErr');
@@ -1106,17 +1179,15 @@ async function copyPrompt(btn){
   show(msg('pMsg'),'warn','Loading master prompt…');
   const full = await buildPrompt();
   out.value = full;
-  builtPromptText = full;
   const words = full.trim().split(/\s+/).length;
-  document.getElementById('pStats').innerHTML = `<div class="stat"><b>${words.toLocaleString()}</b>words in prompt</div><div class="stat"><b>${state.examType}</b>exam type</div><div class="stat"><b>${state.hindiPercent}% / ${100-state.hindiPercent}%</b>Hindi / English</div>`;
-  const parts = splitForCopy(full);
-  renderCopyParts('partsButtons', full, 'pMsg');
-  if(parts.length > 1){
-    document.getElementById('partsWrap').open = true;
-    show(msg('pMsg'),'ok',`Prompt built (${words.toLocaleString()} words) — on mobile, use the ${parts.length} "Copy part" buttons below in order instead of copying it all at once. On a PC, "Copy whole prompt" is fine.`);
-  } else {
-    show(msg('pMsg'),'ok',`Prompt built (${words.toLocaleString()} words) — short enough for a single copy. Use "Copy whole prompt" above, or the part button below if your device still truncates it.`);
+  document.getElementById('pStats').innerHTML = `<div class="stat"><b>${words.toLocaleString()}</b>words in prompt</div><div class="stat"><b>${full.length.toLocaleString()}</b>chars in prompt</div><div class="stat"><b>${state.examType}</b>exam type</div><div class="stat"><b>${state.hindiPercent}% / ${100-state.hindiPercent}%</b>Hindi / English</div>`;
+  if(full.length > MAX_COPY_PROMPT_CHARS){
+    builtPromptText = null;
+    show(msg('pMsg'),'bad',`Prompt is ${full.length.toLocaleString()} characters — over the ${MAX_COPY_PROMPT_CHARS.toLocaleString()}-char limit, so it will NOT be copied (this prevents a silently truncated paste). Reduce scope for this run — a different SUBJECT pulls in fewer reference sources — then tap "Build prompt" again.`);
+    return;
   }
+  builtPromptText = full;
+  show(msg('pMsg'),'ok',`Prompt built (${words.toLocaleString()} words, ${full.length.toLocaleString()} chars — under the ${MAX_COPY_PROMPT_CHARS.toLocaleString()}-char limit). Tap "Copy whole prompt".`);
 }
 async function copyWholePrompt(btn){
   if(!builtPromptText){
@@ -1124,7 +1195,7 @@ async function copyWholePrompt(btn){
     await copyPrompt(btn);
     if(!builtPromptText) return;
   }
-  doCopy(builtPromptText, btn, msg('pMsg'), 'Whole prompt copied — fine on a PC clipboard; if it comes out cut off, use the "Copy part" buttons below instead.');
+  doCopy(builtPromptText, btn, msg('pMsg'), 'Whole prompt copied.');
 }
 
 /* ================= STEP 2 — parse ================= */
