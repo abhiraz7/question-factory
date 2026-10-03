@@ -6,23 +6,29 @@
 //
 // Assembles ONE coherent topic-state object for a {topic, subject, exam}
 // by calling into Phase 1 (editorial-intelligence.mjs), Phase 4
-// (rag-evidence.mjs) and Phase 5 (editorial-statistics.mjs). This file
-// contains no new historical storage and no new statistical formulas of
-// its own — it is wiring: content-memory records in, Phase 1/4/5 functions
-// applied, one object out. The only I/O in this module is the one Phase 4
-// already does (a local, key-free BM25 lookup via rag-evidence.mjs) —
-// everything else here is pure given its inputs.
+// (rag-evidence.mjs), Phase 5 (editorial-statistics.mjs), and Phase 11
+// (gsc.mjs). This file contains no new historical storage and no new
+// statistical formulas of its own — it is wiring: content-memory records
+// in, Phase 1/4/5/11 functions applied, one object out. The only I/O in
+// this module is the Phase 4 local BM25 lookup (rag-evidence.mjs) and the
+// Phase 11 Search Console call (gsc.mjs, network + OAuth, only runs where
+// GOOGLE_OAUTH_* credentials exist — i.e. in a GitHub Action, never in the
+// browser; see gsc.mjs's own header) — everything else here is pure given
+// its inputs.
 //
-// Honesty rule (carried over from Phase 1/3/4): several spec-listed topic-
-// state fields (learner_signals, difficulty, similarity) have NO wired data
-// source yet — no Search Console integration, no PYQ/difficulty dataset, no
-// pre-publish article body to run similarity-check.mjs against. Those
-// fields are returned with `dataAvailable: false` rather than a silently
-// empty `{}` or, worse, a fabricated number — a human/caller should be able
-// to tell "no signal exists yet" apart from "signal exists and is zero".
+// Honesty rule (carried over from Phase 1/3/4): some spec-listed topic-
+// state fields (difficulty, similarity) still have NO wired data source —
+// no PYQ/difficulty dataset, no pre-publish article body to run
+// similarity-check.mjs against. Those fields are returned with
+// `dataAvailable: false` rather than a silently empty `{}` or, worse, a
+// fabricated number — a human/caller should be able to tell "no signal
+// exists yet" apart from "signal exists and is zero". learner_signals now
+// has a real, wired source (Phase 11) but degrades to the exact same shape
+// whenever credentials are absent or the API call fails — see gsc.mjs.
 
 import { buildEditorialSignature, filterMatching } from './editorial-intelligence.mjs';
 import { gatherEvidence } from './rag-evidence.mjs';
+import { fetchLearnerSignals } from './gsc.mjs';
 import {
   frequencyDistribution,
   jensenShannonDivergence,
@@ -55,7 +61,9 @@ function conceptLabel(provenanceEntry) {
  *   first, same shape/convention as editorial-intelligence.mjs and
  *   flavour-engine.mjs take (caller loads these from Automation/content-
  *   memory/*.json — this module does not read the filesystem itself).
- * @param {{evidenceTopK?: number}} [options]
+ * @param {{evidenceTopK?: number, gsc?: Object}} [options] `gsc` is passed
+ *   straight through to fetchLearnerSignals() (e.g. {siteUrl, env} for
+ *   tests) — see gsc.mjs's own JSDoc for its shape.
  * @returns {Promise<Object>} the topic state (spec section 4 shape)
  */
 export async function buildTopicState(ctx = {}, recentMemory = [], options = {}) {
@@ -69,6 +77,7 @@ export async function buildTopicState(ctx = {}, recentMemory = [], options = {})
 
   const editorialSignature = buildEditorialSignature(ctx, recentMemory);
   const evidence = await gatherEvidence(ctx, { topK: options.evidenceTopK });
+  const learner_signals = await fetchLearnerSignals(ctx, options.gsc);
 
   // ---------- coverage ----------
   const importantConcepts = evidence.provenance.map(conceptLabel).filter(Boolean);
@@ -140,8 +149,7 @@ export async function buildTopicState(ctx = {}, recentMemory = [], options = {})
     sampleSize: allMatching.length,
   };
 
-  // ---------- learner_signals / difficulty / similarity: no data source wired yet ----------
-  const learner_signals = { dataAvailable: false, note: 'Search Console integration not wired (spec section 11) — no learner-intent signal exists yet.' };
+  // ---------- difficulty / similarity: no data source wired yet ----------
   const difficulty = { dataAvailable: false, note: 'No PYQ/difficulty dataset is wired into this engine yet.' };
   const similarity = { dataAvailable: false, note: 'similarity-check.mjs compares published HTML bodies; nothing exists pre-publish for this topic yet. See Automation/content-memory/README.md.' };
 
