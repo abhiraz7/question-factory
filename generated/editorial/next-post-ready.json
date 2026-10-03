@@ -27,7 +27,7 @@
       "weakCoverage": false,
       "dateRange": null,
       "confidence": 0,
-      "note": "OAuth token exchange failed (expired/revoked refresh token, or a network error) — Search Console was not queried this run."
+      "note": "OAuth token exchange failed: invalid_client: The provided client secret is invalid.. Search Console was not queried this run. (If this says \"invalid_client\" or \"unauthorized_client\", GOOGLE_OAUTH_CLIENT_ID/SECRET don't match the app that issued the refresh token. If it says \"invalid_grant\", the refresh token itself is wrong, expired, or revoked — note that an API key is NOT a refresh token and will fail exactly this way.)"
     },
     "difficulty": {
       "dataAvailable": false,
@@ -107,7 +107,7 @@
       "recommendedStructures": [],
       "confidence": 0.1
     },
-    "last_updated": "2026-10-03T18:52:30.405Z"
+    "last_updated": "2026-10-03T19:06:27.471Z"
   },
   "evidence": {
     "queryText": "Piaget cognitive development stages CDP",
@@ -223,6 +223,6 @@
     "confidence": 0.13
   },
   "confidence": 0.13,
-  "generatedAt": "2026-10-03T18:52:30.406Z",
+  "generatedAt": "2026-10-03T19:06:27.472Z",
   "mode": "full"
 }
