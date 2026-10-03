@@ -1,13 +1,12 @@
 name: Post-deploy editorial refresh
 
-# NOT ACTIVE — this file ends in .yml.draft, not .yml, so GitHub Actions
-# does not see it at all. Per Automation/core/GITHUB_WORKFLOWS_DESIGN.md and
-# this repo's own "do not create a real .yml file without a human reviewing
-# it first" rule (a workflow goes live and can trigger against the real
-# site the instant it's committed as .yml), renaming this to .yml is the
-# one deliberate step a human takes after reviewing it.
+# ACTIVE. This started as post-deploy-editorial.yml.draft (GitHub Actions
+# ignores .draft files) and was deliberately renamed live by a human after
+# review, per Automation/core/GITHUB_WORKFLOWS_DESIGN.md's "do not create a
+# real .yml file without a human reviewing it first" rule — see this
+# file's git history for that review/decision.
 #
-# What this does once renamed live: after a note or long post actually
+# What this does: after a note or long post actually
 # publishes, runs the already-working, already-tested
 # generate-next-post-ready.mjs (EDITORIAL_INTELLIGENCE_ENGINE.md Phase 9/10)
 # in recommend-only mode (no --topic — there is still no topic backlog in
@@ -18,8 +17,9 @@ name: Post-deploy editorial refresh
 # index.html) does not depend on this workflow succeeding, running on
 # time, or even existing — see buildPrompt()'s fallback for why.
 #
-# Before renaming this live, add these repo secrets (Settings -> Secrets
-# and variables -> Actions): GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
+# For this to actually return Search Console data (it runs fine without
+# this too — see the degrade note below), add these repo secrets
+# (Settings -> Secrets and variables -> Actions): GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
 # GOOGLE_OAUTH_REFRESH_TOKEN (Search Console OAuth2 credentials — see
 # Automation/core/src/gsc.mjs's header for exactly what scope/access these
 # need) and GSC_SITE_URL (the exact property string Search Console shows —
