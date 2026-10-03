@@ -35,7 +35,20 @@ on:
   workflow_run:
     workflows: ["Publish note to WordPress", "Publish long post to WordPress"]
     types: [completed]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Optional: run for one specific topic instead of recommend-only mode (useful for manually testing e.g. the Search Console wiring end-to-end) — leave empty for the normal automatic behavior."
+        required: false
+        default: ""
+      subject:
+        description: "Subject, only used if topic is set."
+        required: false
+        default: ""
+      exam:
+        description: "Exam, only used if topic is set."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -59,13 +72,21 @@ jobs:
         with:
           node-version: 20
 
-      - name: Refresh editorial state (recommend-only — no topic backlog exists yet)
+      - name: Refresh editorial state (recommend-only unless a topic input was given)
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
           GSC_SITE_URL: ${{ secrets.GSC_SITE_URL }}
-        run: node Automation/core/src/generate-next-post-ready.mjs
+          TOPIC: ${{ inputs.topic }}
+          SUBJECT: ${{ inputs.subject }}
+          EXAM: ${{ inputs.exam }}
+        run: |
+          if [ -n "$TOPIC" ]; then
+            node Automation/core/src/generate-next-post-ready.mjs --topic "$TOPIC" --subject "$SUBJECT" --exam "$EXAM"
+          else
+            node Automation/core/src/generate-next-post-ready.mjs
+          fi
 
       - name: Commit updated next-post-ready.json
         run: |
