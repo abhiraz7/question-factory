@@ -148,11 +148,17 @@ export function selectFlavour(ctx, recentMemory = []) {
  */
 export function buildFlavourPromptBlock(ctx, recentMemory = []) {
   const result = selectFlavour(ctx, recentMemory);
+  // Compact format (id: flow — best for X) rather than the earlier
+  // goal+flow+best_for-with-labels version: flow alone already conveys the
+  // teaching sequence, and best_for stays as a short qualifier rather than
+  // a third labeled clause — same 15 options, same information a human
+  // would need to judge fit, considerably fewer characters per line since
+  // this menu is printed in full on every single run regardless of topic.
   const menu = FLAVOUR_ENGINE.map(f =>
-    `- **${f.id}** — goal: ${f.goal}; flow: ${f.flow}; best for: ${f.best_for.join('; ')}`
+    `- **${f.id}**: ${f.flow} (${f.best_for[0]})`
   ).join('\n');
   const recentNote = result.recentlyUsed.length
-    ? ` (recently used on this exam/subject: ${result.recentlyUsed.join(', ')} — a different flavour is preferred where teaching value is comparable)`
+    ? ` (recently used: ${result.recentlyUsed.join(', ')} — prefer a different one if comparable)`
     : '';
-  return `${menu}\n\nEngine suggestion for this topic: **${result.selected.id}**${recentNote}. This is a starting point, not a mandate — a flavour changes real teaching strategy (opening logic, sequence, example strategy, misconception treatment), not wording or card labels. Follow the suggestion unless the topic genuinely teaches better a different way; never pick a flavour merely to avoid repeating the last one. State your final flavour choice and why in Publisher Notes, and set it as the "flavour" field in the Content Memory block.`;
+  return `${menu}\n\nSuggested: **${result.selected.id}**${recentNote}. Starting point, not a mandate — follow it unless the topic genuinely teaches better another way; never switch merely to avoid repetition. State your actual choice and why in Publisher Notes / the Content Memory block's "flavour" field.`;
 }

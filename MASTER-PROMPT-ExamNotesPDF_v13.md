@@ -61,6 +61,19 @@ the topic. Never force a template.
 
 {{FLAVOUR_ENGINE_BLOCK}}
 
+## EDITORIAL SIGNATURE (advisory — a statistical signal, not a mandate)
+The block below, if present, is computed locally from this exam+subject's recent published-note
+history (Automation/content-memory/) — never from this chat, never invented. It names concepts or
+examples that have come up often in recent notes for this exam+subject (consider genuinely varying
+your treatment of them rather than repeating the same framing again), and misconceptions that
+appear in this exam+subject's history but haven't been addressed recently (worth considering if
+genuinely relevant to TOPIC). A low or zero confidence value means there isn't enough recorded
+history yet to say anything meaningful — in that case, ignore this section entirely and write
+exactly as you would without it. Never treat an empty list here as "nothing to avoid repeating" —
+it may simply mean no history exists yet for this exam+subject.
+
+{{EDITORIAL_SIGNATURE_BLOCK}}
+
 ## HARD BANS (never do these — each caused a real, documented failure)
 1. No `<script>` tag anywhere in the body.
 2. No locked/blurred/paywalled content. Everything visible.

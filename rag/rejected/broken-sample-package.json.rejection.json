@@ -1,0 +1,16 @@
+{
+  "status": "rejected",
+  "source": "Deliberately broken sample package (test fixture for rag-package-validator.mjs)",
+  "chunks": 5,
+  "warnings": [],
+  "errors": [
+    "MISSING_CHUNK_TEXT: chunks[1] (id=\"broken-002\") has no non-empty string \"text\".",
+    "DUPLICATE_CHUNK_ID: Chunk id \"broken-001\" appears more than once in this package.",
+    "INVALID_METADATA_ENTRY: chunks[4] (id=\"broken-004\") \"topics[0]\" must be a non-empty string.",
+    "SECRET_LIKE_CONTENT: Package text matches a pattern that looks like a OpenAI-style API key — refusing to index possible credential material.",
+    "SECRET_LIKE_CONTENT: Package text matches a pattern that looks like a generic key/secret/token assignment — refusing to index possible credential material."
+  ],
+  "content_hash": "cf6f8e8dfa10da3de9ea9e4db7d41ab7bbf7753a436dd97fe5befb9b5191167f",
+  "validated_at": "2026-10-02T19:52:23.333Z",
+  "usable_chunks": 4
+}

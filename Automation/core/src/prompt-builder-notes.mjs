@@ -48,8 +48,7 @@ function buildReferenceSourcesBlock(subject, extraSourceUrls){
   const lines = sources.map(s => `- ${s.label}: ${s.url}`);
   extra.forEach(u => lines.push(`- (manually added): ${u}`));
   if(!lines.length) return '';
-  return `## REFERENCE SOURCES FOR THIS RUN
-Use these as supporting material where genuinely relevant to TOPIC — same whitelist rules as HARD BAN 6 still apply for any URL you cite. Use only the parts that are actually relevant to this specific topic, not all of them. Never copy source text verbatim — synthesize into your own teacher-voice prose. Never invent a claim beyond what these (or your own verified knowledge) actually support.
+  return `## REFERENCE SOURCES — supporting material where relevant to TOPIC, same whitelist/honesty rules as above. Use only the relevant parts; never copy text verbatim.
 ${lines.join('\n')}`;
 }
 
@@ -69,17 +68,10 @@ function buildNcertKnowledgeBaseBlock(subject){
   const links = folders.map(f => `- ${f}: ${base}/${encodeURIComponent(f)}`).join('\n');
   return `
 
-## NCERT KNOWLEDGE BASE (check this FIRST, before any general web search)
-This repo maintains its own cleaned NCERT chapter-text corpus for SUBJECT — this is the
-preferred grounding source for this run, ahead of an open-ended web search. If you have the
-ability to open a URL, browse these folders and read whichever chapter .txt files are actually
-relevant to TOPIC before writing — treat the chapter text as evidence to extract facts from and
-explain in your own words (same RAG/SOURCES rule as above: never copy source prose verbatim).
-If a claim traces back to something you read here, cite the ORIGINAL NCERT source
-(ncert.nic.in — see REFERENCE SOURCES above) in the article's References, not this GitHub
-mirror. If you have no browsing ability, skip this section entirely and rely on your own
-verified knowledge under the same honesty rules — never substitute a generic, uncurated web
-search for this repo's own knowledge base.
+## NCERT KNOWLEDGE BASE — check first, before a general web search, if you can open a URL
+This repo's own cleaned NCERT chapter-text corpus for SUBJECT. Read relevant chapters as
+evidence, explain in your own words (never copy verbatim). Cite the ORIGINAL NCERT source,
+not this GitHub mirror. No browsing ability → skip, use your own verified knowledge instead.
 ${links}`;
 }
 
@@ -88,6 +80,12 @@ function outputContract(){
 
 === PIPELINE OUTPUT CONTRACT (read this after finishing everything above — mandatory, additive only) ===
 Everything specified above still applies in full — every rule, every section, every format, every word-count target. This contract only adds wrapper markers around your final answer so an automated script can extract the pieces; it changes nothing about what you write, only how it is packaged at the very end.
+
+=== DELIVERY METHOD — MANDATORY, CHECK THIS FIRST ===
+The person on the other end is very likely on a MOBILE PHONE, where copying a long chat reply is unreliable or blocked outright by the app. Because of this:
+- If your interface is able to create a downloadable file for the user (a "file" / "canvas" / code-interpreter-style output with a download link/button — ChatGPT and Claude apps both support this), you MUST deliver your entire final answer as ONE downloadable plain-text file, extension \`.txt\`, containing everything specified below (all blocks, markers, and fences, unchanged) as the file's full contents — do not also paste the full content into the chat. After the file, reply in the chat with only one short line confirming it's ready to download — no summary, no preview of the content.
+- If your interface has no file-creation capability at all, this section does not apply — output everything directly in the chat exactly as specified below, unchanged.
+Never split the difference (e.g. a short preview file plus the rest in chat) — it is either the whole thing as one file, or the whole thing in chat.
 
 Output exactly three blocks, in this order, with nothing outside them (no extra commentary before, between, or after).
 
@@ -122,6 +120,30 @@ ADDITIVE FIELDS — two extra fields in SEO_JSON beyond what's specified above:
 (the publisher-facing notes exactly as specified above — sources to verify, softened/omitted claims, PYQ label counts, visuals list, variation picks used — plain text)
 \`\`\`
 <<<END_PUBLISHER_NOTES>>>
+
+<<<CONTENT_MEMORY_JSON>>>
+\`\`\`json
+{
+  "flavour": "...",
+  "concepts_taught": ["...", "..."],
+  "misconceptions_used": ["...", "..."],
+  "examples_used": ["...", "..."],
+  "pedagogical_strategy": "...",
+  "article_shape": ["...", "..."],
+  "question_types": ["...", "..."],
+  "sources": ["...", "..."]
+}
+\`\`\`
+<<<END_CONTENT_MEMORY_JSON>>>
+A fourth block, purely for the pipeline's own record-keeping (never shown to a reader) — a lightweight, factual summary of what THIS specific article actually contains, so a future run on a related topic can be told what's already been covered and avoid repeating the same misconception/example/shape choices. Every field reports what you actually wrote, not a plan:
+- "flavour": the exact FLAVOUR_ENGINE id you chose under EDITORIAL FLAVOUR above (e.g. "worked-example").
+- "concepts_taught": the specific named concepts/sub-topics actually explained (not the whole TOPIC string repeated — the individual ideas inside it).
+- "misconceptions_used": the specific wrong-belief(s) actually corrected in a Mistake card or similar, in a few words each.
+- "examples_used": the specific real-life examples/analogies actually used (e.g. "12 and 18", "government-school classroom") — this is what your EDITORIAL FLAVOUR's example strategy cashes out to in practice.
+- "pedagogical_strategy": one short phrase for the dominant teaching approach this article actually used (e.g. "worked-example", "compare-and-contrast", "story-first", "definition-drill").
+- "article_shape": the actual section sequence you wrote, as short lowercase labels in order (e.g. ["hook","concept","worked-example","exam-application","practice"]).
+- "question_types": the practice-question types actually used, matching QUESTION TYPE DIVERSITY above.
+- "sources": the real sources actually cited (names, not URLs — URLs already live in the body's citations).
 
 If you run out of space and cannot finish, stop cleanly at the end of a complete HTML element — the user will send "continue" and you must resume EXACTLY where you stopped (same block, inside a new code fence, no repetition of anything already written, no fresh introduction).
 `;

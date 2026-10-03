@@ -1,0 +1,46 @@
+{
+  "schema_version": "1",
+  "source": {
+    "title": "Deliberately broken sample package (test fixture for rag-package-validator.mjs)",
+    "type": "textbook",
+    "subject": "TEST"
+  },
+  "chunks": [
+    {
+      "id": "broken-001",
+      "text": "Kohlberg's theory of moral development extends Piaget's cognitive framework into the moral domain, proposing three levels (pre-conventional, conventional, post-conventional) each containing two stages.",
+      "page": 50,
+      "section": "Kohlberg overview",
+      "topics": ["moral development"],
+      "concepts": ["Kohlberg"]
+    },
+    {
+      "id": "broken-002",
+      "text": "   ",
+      "page": 51,
+      "section": "Deliberately empty chunk — should trigger MISSING_CHUNK_TEXT",
+      "topics": [],
+      "concepts": []
+    },
+    {
+      "id": "broken-001",
+      "text": "This chunk reuses id 'broken-001' on purpose — should trigger DUPLICATE_CHUNK_ID.",
+      "page": 52,
+      "section": "Duplicate id test"
+    },
+    {
+      "id": "broken-003",
+      "text": "This chunk embeds a credential-shaped string purely as a validator test fixture: api_key: sk-THISISNOTAREALKEY1234567890ABCDEF and should trigger SECRET_LIKE_CONTENT.",
+      "page": 53,
+      "section": "Secret-pattern test"
+    },
+    {
+      "id": "broken-004",
+      "text": "This chunk's topics field is malformed on purpose: a number instead of a string, to trigger INVALID_METADATA_ENTRY.",
+      "page": 54,
+      "section": "Metadata-type test",
+      "topics": [42, "a real topic"],
+      "concepts": []
+    }
+  ]
+}
