@@ -213,18 +213,23 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <option>Hindi</option>
     <option>English</option>
     <option>EVS</option>
+    <option>Employability Skills</option>
   </select>
 
   <label>Hindi / English mix — <span id="langMixLabel">Hindi 70% + English 30%</span></label>
   <input type="range" id="hindiPercent" min="0" max="100" step="5" value="70" oninput="updateLangMixLabel()">
   <p class="hint" style="margin-top:2px">Key terms, definitions, and technical labels always stay in English regardless of this split — this only controls the explanations/tricks/teacher-talk prose.</p>
 
+  <label>PDF URL (optional)</label>
+  <input type="text" id="pdfUrl" placeholder="https://examnotespdf.in/wp-content/uploads/.../file.pdf">
+  <p class="hint" style="margin-top:2px">Upload the PDF to WordPress Media Library first, then paste its link here — the published note will get a Download PDF button and an inline PDF viewer.</p>
+
   <details style="margin-top:10px">
     <summary>📚 Reference sources for this run</summary>
     <div>
       <p class="hint" style="margin-top:8px">Auto-picked from Subject (above) + a general list — always official/whitelisted sources. The AI is told to use these as supporting material only: never copy source text, never invent claims beyond them.</p>
       <div id="refUrlList" style="margin-top:6px"></div>
-      <label style="margin-top:10px">Extra source URLs (optional, one per line — must be an official/whitelisted domain per HARD BAN 6)</label>
+      <label style="margin-top:10px">Extra source URLs (optional, one per line — must be an official/whitelisted domain, see FACTUAL HONESTY #3 in the master prompt)</label>
       <textarea id="extraSourceUrls" style="min-height:70px" placeholder="https://ncert.nic.in/...&#10;https://education.gov.in/..."></textarea>
     </div>
   </details>
@@ -233,7 +238,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <button class="btn ghost" onclick="tryRun(copyWholePrompt,this)">🖥️ Copy whole prompt (PC only)</button>
   <div class="msg" id="pMsg"></div>
   <div id="filePickWrap" style="display:none">
-    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v13.md</code> in the folder above this one:</label>
+    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v15.md</code> in the folder above this one:</label>
     <input type="file" id="masterPromptFile" accept=".md,.txt">
   </div>
   <textarea id="promptOut" style="display:none"></textarea>
@@ -405,15 +410,23 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      editorial-intelligence.mjs, mirrored by
      gen-editorial-intelligence-browser.mjs) — window.EditorialIntelligence.
      buildPrompt() below falls back to an empty/advisory-skip block if this
-     fails to load. Later phases (RAG evidence, topic state, genome, brief —
-     Automation/core/src/{rag-evidence,topic-state,editorial-genome,
-     editorial-brief}.mjs) are deliberately NOT mirrored here: they import
-     Automation/ncert-knowledge-base/retrieve.mjs, which reads its index via
-     node:fs and cannot run in a browser without being ported to a
-     fetch-based loader first — a real architecture decision for a human,
-     not something papered over here. See buildEditorialSignatureBlock()
-     below. -->
+     fails to load. Later phases (topic state, genome, brief —
+     Automation/core/src/{topic-state,editorial-genome,editorial-brief}.mjs)
+     are still deliberately NOT mirrored here. RAG evidence specifically is
+     now handled separately (see window.BM25 below + buildEvidenceBlock()):
+     Automation/ncert-knowledge-base/retrieve.mjs itself still reads its
+     index via node:fs and cannot run in a browser, but its scoring math was
+     pulled out into Automation/core/src/bm25.mjs (zero Node APIs) and
+     mirrored here; the browser side fetches small pre-built index shards
+     instead of calling retrieve.mjs. -->
 <script src="../shared/editorial-intelligence.js"></script>
+<!-- BM25 scoring (Automation/core/src/bm25.mjs, mirrored by
+     gen-bm25-browser.mjs) — window.BM25 = { tokenize, scoreAndRank }. Pure
+     scoring math only; buildEvidenceBlock()/buildInternalLinksBlock() below
+     fetch() the index/post-list JSON themselves and hand it to this. Falls
+     back to no quoted evidence / no computed internal links if this fails
+     to load — never blocks prompt building. -->
+<script src="../shared/bm25.js"></script>
 <!-- Copy-with-limit (Automation/core/src/copy-with-limit.mjs, mirrored by
      gen-copy-with-limit-browser.mjs) — window.CopyWithLimit. splitForCopy()/
      renderCopyParts() below fall back to their original word-count-based
@@ -456,7 +469,7 @@ const CDP_TOPICS = [
 "Major Psychologists & Their Theories",
 "Important CTET Pedagogy Concepts"
 ];
-const EXAM_TYPES = ["CTET Paper I","CTET Paper II","PGT","TGT","KVS","NVS","DSSSB","UPTET","BPSC TRE"];
+const EXAM_TYPES = ["CTET Paper I","CTET Paper II","PGT","TGT","KVS","NVS","DSSSB","UPTET","BPSC TRE","D.El.Ed","D.El.Ed Special Educator","D.El.Ed Special Educator - MD","DELED REGULAR"];
 
 /* ---------- Topic bank (research CSVs, multiple exam sources) ----------
    Deliberately NOT baked into the page like CDP_TOPICS above: each source
@@ -638,6 +651,22 @@ function getTeachingLevel(examTypeRaw){
   if (hasAny('paper ii','paper 2')) return 'Upper Primary/Secondary (Class 6–10)';
   return 'Not explicitly stated in EXAM TYPE — infer the most likely level from TOPIC/SUBJECT/EXAM TYPE context and state your inference once in Publisher Notes';
 }
+
+/* The matched level's own elaboration only — not all three. getTeachingLevel()
+   returns one exact label (or the ambiguous fallback string); this mirrors that
+   same matching so the two can never disagree. Falls back to showing all three
+   only in the genuinely ambiguous case, where the AI actually has to infer which
+   one applies. */
+const TEACHING_LEVEL_DETAIL = {
+  'Primary (Class 1–5)': '**Primary (1–5)**: 6–10yo, concrete, FLN/NIPUN.',
+  'Upper Primary/Secondary (Class 6–10)': '**Upper Primary/Secondary (6–10)**: NCERT 6–10 depth.',
+  'Senior Secondary (Class 11–12)': '**Senior Secondary (11–12)/PGT**: NCERT 11–12 rigor, abstract reasoning.',
+};
+function getTeachingLevelDetail(examType){
+  const level = getTeachingLevel(examType);
+  if(TEACHING_LEVEL_DETAIL[level]) return TEACHING_LEVEL_DETAIL[level];
+  return Object.values(TEACHING_LEVEL_DETAIL).join(' ');
+}
 function renderRefUrlList(){
   const el = document.getElementById('subject');
   if(!el) return;
@@ -685,6 +714,131 @@ This repo's own cleaned NCERT chapter-text corpus for SUBJECT. Read relevant cha
 evidence, explain in your own words (never copy verbatim). Cite the ORIGINAL NCERT source,
 not this GitHub mirror. No browsing ability → skip, use your own verified knowledge instead.
 ${links}`;
+}
+
+/* Short, trimmed excerpt for a quoted citation — never the full chunk/chapter
+   (the master prompt already instructs "quote briefly, in your own words
+   otherwise"); this just keeps the prompt itself from bloating. */
+function excerptFor(text, maxLen){
+  const t = String(text||'').replace(/\s+/g,' ').trim();
+  if(t.length <= maxLen) return t;
+  return t.slice(0, maxLen).trim() + '…';
+}
+
+/* Real quoted evidence with a real citation (page number when the source
+   chunk has one, chapter/book otherwise) — fetched + scored client-side via
+   window.BM25 (Automation/core/src/bm25.mjs, mirrored to shared/bm25.js).
+   Two corpora: this repo's own NCERT per-subject shards (chapter-level,
+   no page data — see Automation/ncert-knowledge-base/build-subject-shards.mjs's
+   header for why) and the newer rag/index/index.json chunk pipeline (page-level
+   when the uploaded package had one). Degrades to '' on any failure — never
+   blocks prompt building (same pattern as buildFlavourBlock/
+   buildEditorialSignatureBlock below).
+   Kept deliberately small (3 hits, ~160-char excerpts): the master prompt's
+   own fixed scaffolding (FLAVOUR/SIGNATURE/OUTPUT CONTRACT/etc.) already
+   sits within ~1,000 chars of the tool's hard 18,000-char copy ceiling for
+   some subjects, so this and buildInternalLinksBlock() must stay cheap, and
+   buildPrompt() below additionally drops either block first if a specific
+   run still doesn't fit. Returns { text, usedNcert } — usedNcert lets
+   buildPrompt() skip the redundant "here's a GitHub folder link" fallback
+   (buildNcertKnowledgeBaseBlock) when real excerpts from that same corpus
+   are already included. */
+async function buildEvidenceBlock(topic, subject){
+  if(!window.BM25) return { text:'', usedNcert:false };
+  const hits = [];
+  try{
+    const folders = NCERT_KB_SUBJECT_MAP[subject] || [];
+    const ncertShards = await Promise.allSettled(folders.map(f =>
+      fetch(`../Automation/ncert-knowledge-base/by-subject-index/${encodeURIComponent(f)}.json`).then(r => r.ok ? r.json() : null)
+    ));
+    for(const r of ncertShards){
+      if(r.status !== 'fulfilled' || !r.value) continue;
+      for(const hit of window.BM25.scoreAndRank(r.value, topic, null, 2)) hits.push({ kind:'ncert', hit });
+    }
+  }catch(e){ /* degrade quietly */ }
+  try{
+    const res = await fetch('../rag/index/index.json');
+    if(res.ok){
+      const ragIndex = await res.json();
+      const filter = subject ? { field:'subject', value: subject } : null;
+      for(const hit of window.BM25.scoreAndRank(ragIndex, topic, filter, 2)) hits.push({ kind:'rag', hit });
+    }
+  }catch(e){ /* degrade quietly */ }
+
+  if(!hits.length) return { text:'', usedNcert:false };
+  hits.sort((a,b) => b.hit.score - a.hit.score);
+  const top = hits.slice(0, 3);
+  const usedNcert = top.some(h => h.kind === 'ncert');
+
+  const lines = top.map((h, i) => {
+    const n = i + 1;
+    if(h.kind === 'ncert'){
+      const citation = `NCERT, ${h.hit.book}, Ch. ${h.hit.chapter}`;
+      return `[${n}] ${citation} — "${excerptFor(h.hit.text, 160)}"`;
+    }
+    const where = h.hit.page != null ? `p.${h.hit.page}` : (h.hit.section ? h.hit.section : null);
+    const citation = `${h.hit.source || 'Source'}${where ? `, ${where}` : ''}`;
+    return `[${n}] ${citation} — "${excerptFor(h.hit.text, 160)}"`;
+  });
+
+  const text = `
+
+## EVIDENCE TO QUOTE — real excerpts already retrieved from this site's own sources
+Quote briefly (short phrase, in quotation marks) from the numbered excerpt you're
+citing, then explain in your own words — never copy a whole excerpt. Cite exactly as
+shown, never invent a page/chapter beyond what's given.
+${lines.join('\n')}`;
+  return { text, usedNcert };
+}
+
+/* Real, currently-live internal link targets — fetched from this site's own
+   public WordPress REST API (examnotespdf.in/wp-json/wp/v2/free_notes), not
+   invented by the AI. CORS-open, no auth needed (verified: WordPress core
+   reflects any Origin on this endpoint). Scored against topic/subject with
+   the same window.BM25.tokenize() word-overlap used for retrieval elsewhere
+   in this file, so no second ranking algorithm is needed. Degrades to ''
+   on any failure (offline, API down, CORS changed) — never blocks prompt
+   building. Capped at 7 (the master prompt's own minimum) rather than a
+   larger shortlist — see the char-budget note on buildEvidenceBlock() above. */
+async function buildInternalLinksBlock(topic, subject, examType){
+  if(!window.BM25) return '';
+  let posts = [];
+  try{
+    const base = 'https://examnotespdf.in/wp-json/wp/v2/free_notes?status=publish&per_page=100&_fields=slug,link,title';
+    let page = 1;
+    let totalPages = 1;
+    while(page <= totalPages && page <= 5){
+      const res = await fetch(`${base}&page=${page}`);
+      if(!res.ok) break;
+      const tp = Number(res.headers.get('X-WP-TotalPages'));
+      if(tp) totalPages = tp;
+      const batch = await res.json();
+      if(!Array.isArray(batch) || !batch.length) break;
+      posts = posts.concat(batch);
+      page++;
+    }
+  }catch(e){ return ''; }
+  if(!posts.length) return '';
+
+  const queryTerms = new Set(window.BM25.tokenize(`${topic} ${subject||''} ${examType||''}`));
+  const scored = posts.map(p => {
+    const title = (p.title && (p.title.rendered || p.title)) || '';
+    const titleTerms = window.BM25.tokenize(title);
+    const overlap = titleTerms.filter(t => queryTerms.has(t)).length;
+    return { title: excerptFor(title, 70), link: p.link, overlap };
+  }).filter(p => p.link && p.title);
+  scored.sort((a,b) => b.overlap - a.overlap);
+  const top = scored.slice(0, 7);
+  if(!top.length) return '';
+
+  const lines = top.map(p => `- ${p.title}: ${p.link}`).join('\n');
+  return `
+
+## INTERNAL LINKS TO USE — real, currently-live URLs on this site
+Weave ${top.length >= 7 ? 'all of' : 'as many as fit naturally from'} these into the
+body as contextual anchor text (not a bare list). Do NOT invent any other internal
+link or slug.
+${lines}`;
 }
 
 // Safe to run now that the REFERENCE_SOURCES_* consts above are initialised.
@@ -849,7 +1003,7 @@ function updateLangMixLabel(){
 
 async function loadMasterPrompt(){
   if(masterPromptText) return masterPromptText;
-  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v13.md'];
+  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v15.md'];
   let lastErr;
   for(const url of candidates){
     try{
@@ -863,7 +1017,7 @@ async function loadMasterPrompt(){
   const hint = location.protocol === 'file:'
     ? 'This page was opened straight from the folder (file://), where browsers block reading other files automatically.'
     : 'Could not load the master prompt file from the repo root ('+(lastErr?lastErr.message:'')+').';
-  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v13.md manually — then tap "Build & copy prompt" again.');
+  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v15.md manually — then tap "Build & copy prompt" again.');
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -901,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.getElementById('topic').value = old.topic || '';
       document.getElementById('subject').value = old.subject || 'Auto-detect';
       document.getElementById('hindiPercent').value = old.hindiPercent || 70;
+      document.getElementById('pdfUrl').value = old.pdfUrl || '';
       updateLangMixLabel();
       const oldExams = String(old.examType||'').split('/').map(s=>s.trim());
       document.querySelectorAll('.examChk').forEach(c => c.checked = oldExams.includes(c.value));
@@ -1023,6 +1178,15 @@ async function buildFlavourBlock(topic, examType, subject){
   }catch(e){ return FLAVOUR_ENGINE_FALLBACK_TEXT; }
 }
 
+const OPENING_STYLE_FALLBACK_TEXT = 'Open this note with whichever hook (a question, a real fact, a classroom scenario, a plain definition, or a common misconception) genuinely suits this topic best, and vary it from your last note on this exam.';
+async function buildEditorialVarietyBlock(topic, examType, subject){
+  try{
+    if(!window.FlavourEngine) return OPENING_STYLE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    return window.FlavourEngine.buildEditorialVarietyBlock({ topic, exam: examType, subject }, recent);
+  }catch(e){ return OPENING_STYLE_FALLBACK_TEXT; }
+}
+
 /* ================= EDITORIAL INTELLIGENCE signature (client glue) =================
    Phase 1 ONLY (see the <script src="../shared/editorial-intelligence.js">
    tag's comment above for why Phases 4/6/7/8 aren't here). Same
@@ -1060,38 +1224,72 @@ async function buildPrompt(){
   state.topic = topic; state.examType = examType; state.subject = subject; state.hindiPercent = hindiPercent;
   saveDraft();
 
-  let master = await loadMasterPrompt();
-  master = master.replace('{{REFERENCE_SOURCES_BLOCK}}', buildReferenceSourcesBlock(subject) + buildNcertKnowledgeBaseBlock(subject));
-  master = master.replaceAll('{{TEACHING_LEVEL}}', getTeachingLevel(examType));
-  master = master.replace('{{FLAVOUR_ENGINE_BLOCK}}', await buildFlavourBlock(topic, examType, subject));
-  master = master.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
+  let masterTemplate = await loadMasterPrompt();
+  masterTemplate = masterTemplate.replaceAll('{{TEACHING_LEVEL}}', getTeachingLevel(examType));
+  masterTemplate = masterTemplate.replace('{{TEACHING_LEVEL_DETAIL}}', getTeachingLevelDetail(examType));
+  masterTemplate = masterTemplate.replace('{{FLAVOUR_ENGINE_BLOCK}}', await buildFlavourBlock(topic, examType, subject));
+  masterTemplate = masterTemplate.replace('{{EDITORIAL_VARIETY_BLOCK}}', await buildEditorialVarietyBlock(topic, examType, subject));
+  masterTemplate = masterTemplate.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
 
-  // PROMPT ASSEMBLER — selects/trims Master Prompt modules for this run
-  // (e.g. keeps only the matching TEACHING LEVEL bullet and the matching
-  // SUBJECT bullet in STRUCTURE, drops the human-only changelog preamble)
-  // so the runtime prompt is smaller than the full Master Prompt file
-  // without ever touching content that DOES apply to this run. See
-  // Automation/core/src/prompt-assembler.mjs for the full explanation and
-  // what is deliberately NOT trimmed. Falls back to the untouched full
-  // master text if the assembler script is unavailable for any reason —
-  // this must never block prompt generation.
-  try{
-    if(window.PromptAssembler){
-      const levelKey = window.PromptAssembler.levelKeyFromLabel(getTeachingLevel(examType));
-      master = window.PromptAssembler.assembleRuntimePrompt(master, { tool:'notes', subject, levelKey }).prompt;
-    }
-  }catch(e){ /* assembler failure -> keep the full, untrimmed master text below */ }
+  const evidence = await buildEvidenceBlock(topic, subject);
+  const linksText = await buildInternalLinksBlock(topic, subject, examType);
+  // Skip the weak "here's a GitHub folder link, read it yourself" fallback
+  // when buildEvidenceBlock() already pulled real excerpts from that same
+  // NCERT corpus — repeating both wastes budget on the same source twice.
+  const refBlockWithEvidence = buildReferenceSourcesBlock(subject) + (evidence.usedNcert ? '' : buildNcertKnowledgeBaseBlock(subject));
+  const refBlockNoEvidence = buildReferenceSourcesBlock(subject) + buildNcertKnowledgeBaseBlock(subject);
 
   const config = state.isUpdate ? updateConfig(topic, examType, subject, hindiPercent) : `=== RUN THIS GENERATION WITH THESE EXACT INPUT VARIABLES ===
 TOPIC: ${topic}
 EXAM TYPE: ${examType}
 SUBJECT: ${subject}
-TARGET_YEAR: 2026 (this is the locked constant already specified inside the prompt below — do not change it)
-LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}% — this OVERRIDES any Hindi/English language-mix default stated elsewhere in the master prompt below. Apply this ratio to the explanations/tricks/teacher-talk/connecting prose only — key terms, definitions, and technical labels still stay in English regardless of this split.
+TARGET_YEAR: 2026
+LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}%
 === END RUN CONFIGURATION — THE FULL MASTER PROMPT FOLLOWS BELOW, UNCHANGED ===
 
 `;
-  return config + master + outputContract();
+  const footer = outputContract();
+
+  // Assembles + assembler-trims one candidate given which optional blocks to
+  // include. PROMPT ASSEMBLER selects/trims Master Prompt modules for this
+  // run (e.g. keeps only the matching TEACHING LEVEL bullet) so the runtime
+  // prompt is smaller than the full Master Prompt file without touching
+  // content that DOES apply — see Automation/core/src/prompt-assembler.mjs.
+  // Falls back to the untrimmed text if the assembler is unavailable; this
+  // must never block prompt generation.
+  function assemble(refText, evidenceText, linksTxt){
+    let m = masterTemplate
+      .replace('{{REFERENCE_SOURCES_BLOCK}}', refText)
+      .replace('{{EVIDENCE_BLOCK}}', evidenceText)
+      .replace('{{INTERNAL_LINKS_BLOCK}}', linksTxt);
+    try{
+      if(window.PromptAssembler){
+        const levelKey = window.PromptAssembler.levelKeyFromLabel(getTeachingLevel(examType));
+        m = window.PromptAssembler.assembleRuntimePrompt(m, { tool:'notes', subject, levelKey }).prompt;
+      }
+    }catch(e){ /* assembler failure -> keep m as built above */ }
+    return m;
+  }
+
+  // The master prompt's own fixed scaffolding (FLAVOUR/SIGNATURE/OUTPUT
+  // CONTRACT/etc.) already sits close to the tool's hard 18,000-char copy
+  // ceiling for some subjects. Try the full evidence+links version first;
+  // if a specific run still doesn't fit, drop internal links (least
+  // critical — the SEO section's own fallback line covers this), then
+  // evidence too (reverting to the plain NCERT-folder-link fallback),
+  // rather than let the hard ceiling reject the whole prompt outright.
+  const SAFE_CEILING = 17500;
+  const candidates = [
+    () => assemble(refBlockWithEvidence, evidence.text, linksText),
+    () => assemble(refBlockWithEvidence, evidence.text, ''),
+    () => assemble(refBlockNoEvidence, '', ''),
+  ];
+  let master = candidates[0]();
+  for(let i = 1; i < candidates.length && (config + master + footer).length > SAFE_CEILING; i++){
+    master = candidates[i]();
+  }
+
+  return config + master + footer;
 }
 
 // The revision variant of the run-config block: instead of a blank TOPIC,
@@ -1125,8 +1323,8 @@ verified otherwise):
 OLD TOPIC: ${topic}
 OLD EXAM TYPE: ${examType}
 OLD SUBJECT: ${subject}
-TARGET_YEAR: 2026 (locked, same as before)
-LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}% — applies to explanations/tricks/teacher-talk prose only, same rule as the master prompt below.
+TARGET_YEAR: 2026
+LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}%
 
 OLD SEO PANEL (for reference only — do not just copy this, fix anything generic per point 2 above, but KEEP THE SAME SLUG so this republishes over the same WordPress post rather than creating a new one):
 ${JSON.stringify(oldSeo, null, 2)}
@@ -1938,6 +2136,12 @@ function buildBundle(){
   // Carry the old WordPress post id forward so publish-note.yml knows to
   // PUT-update that existing post instead of creating a new draft.
   if(state.isUpdate && state.wordpress) bundle.wordpress = state.wordpress;
+  // Optional PDF attachment (already uploaded to Media Library by the user) —
+  // publish-note.yml sets this as _enp_pdf_url so the template can render a
+  // download button + PDF Embedder viewer. Read straight from the field,
+  // not `state` — it's note metadata, not part of the AI prompt.
+  const pdfUrlVal = (document.getElementById('pdfUrl').value || '').trim();
+  if(pdfUrlVal) bundle.pdfUrl = pdfUrlVal;
   return bundle;
 }
 
