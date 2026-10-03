@@ -119,7 +119,7 @@
     ]
   },
   "confidence": 0,
-  "generatedAt": "2026-10-03T18:30:06.881Z",
+  "generatedAt": "2026-10-03T18:40:24.595Z",
   "mode": "recommend-only",
   "humanActionNeeded": "No topic backlog data source exists in this repo yet (checked Automation/wp-structure/*.tsv — that is WordPress course/subject taxonomy, not a content backlog). Re-run with --topic \"...\" --subject \"...\" --exam \"...\" once a specific next topic is chosen, or wire a real topic backlog into this script. See this session's EDITORIAL_INTELLIGENCE_PROGRESS_REPORT.md."
 }
