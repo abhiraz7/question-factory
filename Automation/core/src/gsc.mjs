@@ -6,13 +6,19 @@
 // GitHub Actions, never the browser; this module has no browser mirror and
 // is never fetched by notes-factory/index.html).
 //
-// Reads three OAuth2 credentials from the environment (GOOGLE_OAUTH_CLIENT_ID,
-// GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN) plus the Search
-// Console property to query (GSC_SITE_URL, defaulting to
-// https://examnotespdf.in/ — override if the property is domain-verified
-// instead, e.g. sc-domain:examnotespdf.in), does a refresh-token exchange,
-// and queries searchAnalytics for the last ~28 days (ending a few days back
-// to stay inside Search Console's own data-freshness lag). Deliberately
+// Reads four values from the environment: three OAuth2 credentials
+// (GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
+// GOOGLE_OAUTH_REFRESH_TOKEN) and the Search Console property to query
+// (GSC_SITE_URL — the exact property string as Search Console shows it,
+// either a URL-prefix property like "https://example.com/" or a
+// domain-verified property like "sc-domain:example.com"). Deliberately NO
+// hardcoded default site here: the property identifier is configuration,
+// not something this public repo's source should bake in, so a missing
+// GSC_SITE_URL degrades the same honest way a missing credential does
+// rather than silently falling back to some guessed value. Does a
+// refresh-token exchange, then queries searchAnalytics for the last ~28
+// days (ending a few days back to stay inside Search Console's own
+// data-freshness lag). Deliberately
 // plain fetch() + manual OAuth, no googleapis SDK dependency, matching this
 // repo's existing "pure, dependency-light" convention (see
 // editorial-intelligence.mjs's header, and buildEvidenceBlock()/
@@ -30,7 +36,6 @@ import { tokenize } from './bm25.mjs';
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const SEARCH_ANALYTICS_ENDPOINT = 'https://searchconsole.googleapis.com/webmasters/v3/sites';
-const DEFAULT_SITE_URL = 'https://examnotespdf.in/';
 const DEFAULT_LOOKBACK_DAYS = 28;
 const DEFAULT_LAG_DAYS = 3; // GSC data for the last 1-3 days is often incomplete/missing
 const DEFAULT_ROW_LIMIT = 5000;
@@ -151,7 +156,7 @@ export async function fetchLearnerSignals(ctx = {}, options = {}) {
   const clientId = env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = env.GOOGLE_OAUTH_CLIENT_SECRET;
   const refreshToken = env.GOOGLE_OAUTH_REFRESH_TOKEN;
-  const siteUrl = options.siteUrl || env.GSC_SITE_URL || DEFAULT_SITE_URL;
+  const siteUrl = options.siteUrl || env.GSC_SITE_URL;
 
   const empty = (note) => ({
     dataAvailable: false,
@@ -164,6 +169,9 @@ export async function fetchLearnerSignals(ctx = {}, options = {}) {
 
   if (!clientId || !clientSecret || !refreshToken) {
     return empty('No GOOGLE_OAUTH_* credentials in the environment — Search Console was not queried this run.');
+  }
+  if (!siteUrl) {
+    return empty('No GSC_SITE_URL configured — Search Console was not queried this run. Set it to the exact property string Search Console shows (e.g. a URL-prefix property like "https://example.com/" or a domain property like "sc-domain:example.com").');
   }
 
   const accessToken = await getAccessToken({ clientId, clientSecret, refreshToken });
