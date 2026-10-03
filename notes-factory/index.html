@@ -396,6 +396,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      window.PromptAssembler. buildPrompt() below falls back to the full,
      untrimmed Master Prompt text if this fails to load. -->
 <script src="../shared/prompt-assembler.js"></script>
+<!-- Topic bank registry (Automation/core/src/topic-bank-sources.mjs,
+     mirrored by gen-topic-bank-sources-browser.mjs) — window.TopicBankSources.
+     Shared with question-factory, update-factory and reporting/index.html so
+     there is exactly one place to add a new exam/CSV. -->
+<script src="../shared/topic-bank-sources.js"></script>
 <!-- Editorial Intelligence signature — Phase 1 ONLY (Automation/core/src/
      editorial-intelligence.mjs, mirrored by
      gen-editorial-intelligence-browser.mjs) — window.EditorialIntelligence.
@@ -459,44 +464,14 @@ const EXAM_TYPES = ["CTET Paper I","CTET Paper II","PGT","TGT","KVS","NVS","DSSS
    and only the source the user picks) from the repo's own topic-research
    CSVs, and the UI only ever renders one subject's rows at a time — never
    the whole planned-topic list in one visible dump.
-   Every CSV here shares ONE format — `S.No.,Subject,Topic` — on purpose:
-   one exam/post per file (BPSC TRE 4 is one file; DSSSB's 4 posts are 4
-   separate files, split from the original combined CSV), so there's no
-   per-source parsing code to maintain — every entry below is pure data. Add
-   a future exam by adding one more {label, url, examChkFilter, subjectMap}
-   entry, never by writing a new parse function. */
-const TOPIC_BANK_SOURCES = {
-  'bpsc-tre-4': {
-    label: 'BPSC TRE 4 — Primary Teacher',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/BPSC-TRE-4-Primary-Teacher-SEO-Topics-Hindi-v2.csv',
-    examChkFilter: 'BPSC',
-    subjectMap: { 'हिंदी':'Hindi', 'अंग्रेजी':'English', 'गणित':'Maths', 'विज्ञान':'Science', 'इतिहास':'History', 'भूगोल':'Geography' },
-  },
-  'dsssb-tgt-cs': {
-    label: 'DSSSB 2026 — TGT Computer Science',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Computer-Science-Topics.csv',
-    examChkFilter: 'DSSSB',
-    subjectMap: { 'Hindi':'Hindi', 'English':'English' }, // General Awareness/Reasoning/etc. have no matching Subject dropdown option — left as Auto-detect
-  },
-  'dsssb-domestic-science': {
-    label: 'DSSSB 2026 — Domestic Science Teacher',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Domestic-Science-Teacher-Topics.csv',
-    examChkFilter: 'DSSSB',
-    subjectMap: { 'Hindi':'Hindi', 'English':'English' },
-  },
-  'dsssb-tgt-special-ed': {
-    label: 'DSSSB 2026 — TGT Special Education Teacher',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-TGT-Special-Education-Teacher-Topics.csv',
-    examChkFilter: 'DSSSB',
-    subjectMap: { 'Hindi':'Hindi', 'English':'English' },
-  },
-  'dsssb-special-educator-primary': {
-    label: 'DSSSB 2026 — Special Educator (Primary)',
-    url: 'https://raw.githubusercontent.com/bugignore/question-factory/main/Automation/input%20sylabuss/DSSSB-2026-Special-Educator-Primary-Topics.csv',
-    examChkFilter: 'DSSSB',
-    subjectMap: { 'Hindi':'Hindi', 'English':'English' },
-  },
-};
+   The source registry itself (labels, CSV URLs, subject mappings) lives in
+   Automation/core/src/topic-bank-sources.mjs and is shared with
+   question-factory, update-factory and reporting/index.html via
+   shared/topic-bank-sources.js — add a new exam there, never here, so the
+   four consumers can't drift apart the way they used to. */
+const TOPIC_BANK_SOURCES = window.TopicBankSources
+  ? window.TopicBankSources.TOPIC_BANK_SOURCES
+  : (console.error('shared/topic-bank-sources.js failed to load — Topic bank is unavailable.'), {});
 let topicBankRows = null; // lazy-loaded, cached per selected source for the rest of this session
 let topicBankLoadedSource = null;
 
@@ -588,10 +563,19 @@ function useTopicBankRow(idx){
   const topicEl = document.getElementById('topic');
   topicEl.value = r.topic;
   topicEl.classList.remove('fieldErr');
-  const mappedSubject = source.subjectMap[r.subjectLabel];
+  const mappedSubject = source.notesSubjectMap[r.subjectLabel];
   const subjectSel = document.getElementById('subject');
-  if(mappedSubject && [...subjectSel.options].some(o => o.value === mappedSubject)) subjectSel.value = mappedSubject;
-  document.querySelectorAll('.examChk').forEach(cb => { if(cb.value.toUpperCase().includes(source.examChkFilter)) cb.checked = true; });
+  // Always set the Subject dropdown, even when this row's subject has no
+  // mapping (e.g. DSSSB's own "Special Education"/"General Awareness"
+  // columns) — leaving it untouched used to carry over whatever subject a
+  // previous topic pick left behind instead of resetting to Auto-detect.
+  subjectSel.value = (mappedSubject && [...subjectSel.options].some(o => o.value === mappedSubject))
+    ? mappedSubject : 'Auto-detect';
+  // Replace the exam-type selection rather than adding to it — only
+  // checking the matching box and never unchecking the rest used to leave
+  // "CTET Paper I" (checked by default on page load) checked alongside
+  // whatever exam was actually picked, producing e.g. "CTET Paper I / DSSSB".
+  document.querySelectorAll('.examChk').forEach(cb => { cb.checked = cb.value.toUpperCase().includes(source.examMatch.toUpperCase()); });
   renderRefUrlList();
   doCopy(r.topic, null, msg('topicBankMsg'), 'Topic copied and filled in above — Exam/Subject set to match.');
 }

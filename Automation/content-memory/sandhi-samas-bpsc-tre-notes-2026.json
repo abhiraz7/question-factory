@@ -1,0 +1,68 @@
+{
+  "id": "sandhi-samas-bpsc-tre-notes-2026",
+  "type": "note",
+  "topic": "संधि और समास for BPSC TRE 4: प्रकार, पहचानने की Trick और महत्वपूर्ण प्रश्न",
+  "subject": "Auto-detect",
+  "exam": "BPSC TRE",
+  "flavour": "compare-and-contrast",
+  "concepts_taught": [
+    "संधि का मूल अर्थ",
+    "स्वर संधि",
+    "व्यंजन संधि",
+    "विसर्ग संधि",
+    "समास का मूल अर्थ",
+    "अव्ययीभाव समास",
+    "तत्पुरुष समास",
+    "कर्मधारय समास",
+    "द्विगु समास",
+    "द्वंद्व समास",
+    "बहुव्रीहि समास",
+    "संधि और समास का अंतर",
+    "विग्रह और संधि-विच्छेद आधारित पहचान"
+  ],
+  "misconceptions_used": [
+    "हर संयुक्त शब्द समास होता है",
+    "हर रूप-परिवर्तन को बिना जाँच संधि मान लेना",
+    "कर्मधारय और बहुव्रीहि को केवल दो जुड़े पद देखकर समान मानना"
+  ],
+  "examples_used": [
+    "विद्या + आलय → विद्यालय",
+    "देव + आलय → देवालय",
+    "नर + इन्द्र → नरेन्द्र",
+    "पर + उपकार → परोपकार",
+    "राजा का पुत्र → राजपुत्र",
+    "नीला कमल → नीलकमल",
+    "पाँच तत्वों का समूह → पंचतत्व",
+    "माता और पिता → माता-पिता",
+    "दस मुख वाला → दशानन"
+  ],
+  "pedagogical_strategy": "compare-and-contrast with diagnostic identification",
+  "article_shape": [
+    "hook",
+    "core-comparison",
+    "sandhi-concepts",
+    "samas-concepts",
+    "comparison",
+    "tricks-and-traps",
+    "practice",
+    "rapid-revision",
+    "references",
+    "faq"
+  ],
+  "question_types": [
+    "direct-recall",
+    "comparison",
+    "classification",
+    "assertion-reasoning",
+    "identification"
+  ],
+  "sources": [
+    "Bihar Public Service Commission official exam calendar",
+    "Bihar Public Service Commission official TRE-3.0 question material",
+    "Bihar Public Service Commission official question material on स्वर संधि and समास",
+    "NCERT official textbook portal"
+  ],
+  "postId": "557",
+  "link": "https://examnotespdf.in/?post_type=free_notes&p=557",
+  "published": "2026-09-16T11:51:15Z"
+}

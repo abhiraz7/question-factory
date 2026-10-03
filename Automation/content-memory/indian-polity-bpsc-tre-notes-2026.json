@@ -1,0 +1,69 @@
+{
+  "id": "indian-polity-bpsc-tre-notes-2026",
+  "type": "note",
+  "topic": "Indian Polity for BPSC TRE 4: संविधान, मौलिक अधिकार, कर्तव्य और लोकतंत्र",
+  "subject": "Hindi",
+  "exam": "BPSC TRE",
+  "flavour": "compare-and-contrast",
+  "concepts_taught": [
+    "संविधान का मूल अर्थ और शासन-नागरिक संबंध",
+    "Preamble के Justice, Liberty, Equality और Fraternity ideals",
+    "Fundamental Rights का Part III और Articles 12–35 framework",
+    "Fundamental Rights के छह प्रमुख समूह",
+    "Right to Constitutional Remedies",
+    "Fundamental Rights की conditions, exceptions और reasonable restrictions",
+    "Fundamental Duties का Part IVA और Article 51A framework",
+    "Fundamental Rights और Fundamental Duties का अंतर",
+    "Democracy को election से व्यापक concept के रूप में समझना",
+    "लोकतांत्रिक participation, institutions और accountability का संबंध",
+    "Preamble बनाम Fundamental Rights",
+    "Freedom बनाम unlimited freedom",
+    "Rights/Duties और democratic behaviour के बीच conceptual relationship"
+  ],
+  "misconceptions_used": [
+    "संविधान और सरकार को एक ही चीज समझना",
+    "Preamble और Fundamental Rights को समान constitutional provision मानना",
+    "Fundamental Rights को unlimited freedom समझना",
+    "Fundamental Rights और Fundamental Duties को interchangeable मानना",
+    "हर Fundamental Duty को Fundamental Right की तरह उसी तरीके से enforceable मानना",
+    "Democracy को केवल election तक सीमित करना",
+    "Article numbers को concepts से अलग रटना"
+  ],
+  "examples_used": [
+    "कक्षा में सभी विद्यार्थियों को बोलने का अवसर देना",
+    "school rule पर विद्यार्थियों की अलग-अलग राय और rule-based decision",
+    "Preamble values को classroom behaviour से जोड़ने का सीमित analogy",
+    "Preamble → Rights → Duties → Democracy learning chain"
+  ],
+  "pedagogical_strategy": "compare-and-contrast",
+  "article_shape": [
+    "concept",
+    "preamble-values",
+    "rights-classification",
+    "rights-vs-duties",
+    "democracy-application",
+    "exam-traps",
+    "practice",
+    "rapid-revision",
+    "faq-sources"
+  ],
+  "question_types": [
+    "direct-recall",
+    "comparison",
+    "assertion-reason",
+    "scenario",
+    "classification",
+    "concept-application"
+  ],
+  "sources": [
+    "NCERT — Constitutional Design",
+    "NCERT — Constitution of India / Preamble",
+    "NCERT — Constitution of India / Fundamental Rights",
+    "NCERT — Democratic Politics learning objectives",
+    "India Code — Constitution of India, Fundamental Duties",
+    "Bihar Public Service Commission — Question Booklets"
+  ],
+  "postId": "555",
+  "link": "https://examnotespdf.in/?post_type=free_notes&p=555",
+  "published": "2026-09-14T13:17:29Z"
+}

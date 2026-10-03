@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F4F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B0C0F" media="(prefers-color-scheme: dark)">
-<title>Long Post Factory — Reporting</title>
+<title>Content Factory — Reporting</title>
 <script>
 /* Applied before paint so a saved theme never flashes the wrong colours. */
 (function(){try{var t=localStorage.getItem('enp-theme');
@@ -64,7 +64,13 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   header{ background:var(--accent); color:var(--accent-ink); padding:20px 24px; }
   header h1{ margin:0; font-size:20px; }
   header p{ margin:6px 0 0; font-size:13px; opacity:.85; }
-  main{ max-width:1100px; margin:0 auto; padding:20px; }
+  main{ max-width:1200px; margin:0 auto; padding:20px; }
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .tab{ padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+    font-size:13px; font-weight:600; cursor:pointer; }
+  .tab.active{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
   .stats{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
   .stat{ background:var(--card); border-radius:12px; padding:14px 18px; box-shadow:var(--shadow); min-width:120px; }
   .stat b{ display:block; font-size:22px; }
@@ -84,6 +90,10 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   a{ color:var(--link); }
   .msg{ padding:12px; color:var(--ink-soft); font-size:13px; }
   .small{ font-size:11px; color:var(--ink-faint); }
+  .section-title{ font-size:15px; font-weight:700; margin:22px 0 8px; }
+  .section-title:first-child{ margin-top:0; }
+  .coverage-bar{ background:var(--line-soft); border-radius:999px; height:8px; width:120px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:8px; }
+  .coverage-bar > div{ background:var(--done-ink); height:100%; }
 
   /* three-state theme switch — floats clear of each page's own header */
   #themeToggle{position:fixed;top:10px;right:10px;z-index:9999;display:flex;align-items:center;gap:6px;
@@ -95,36 +105,67 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 </head>
 <body>
 <header>
-  <h1>📊 Long Post Factory — Reporting</h1>
-  <p>What's been published, what's still queued, and each note's grounding signal.</p>
+  <h1>📊 Content Factory — Reporting</h1>
+  <p>What's been published to WordPress, and which syllabus topics are still pending, across notes, long posts and question batches.</p>
 </header>
 <main>
-  <div class="stats" id="stats"></div>
-  <div class="controls">
-    <input type="text" id="searchBox" placeholder="Search topic / exam / slug...">
-    <select id="statusFilter">
-      <option value="">All statuses</option>
-      <option value="done">Done</option>
-      <option value="pending">Pending</option>
-      <option value="running">Running</option>
-      <option value="failed">Failed</option>
-    </select>
+  <div class="tabs">
+    <button class="tab active" data-panel="notes">Notes</button>
+    <button class="tab" data-panel="longposts">Long Posts</button>
+    <button class="tab" data-panel="questions">Question Batches</button>
+    <button class="tab" data-panel="coverage">Topic Coverage</button>
   </div>
-  <table>
-    <thead>
-      <tr><th>Topic</th><th>Exam</th><th>Status</th><th>NCERT cites</th><th>Self-check</th><th>Published</th><th>Link</th></tr>
-    </thead>
-    <tbody id="rows"><tr><td colspan="7" class="msg">Loading…</td></tr></tbody>
-  </table>
-</main>
-<script>
-// Reads two repo-relative JSON sources — no secrets, safe on GitHub Pages:
-//   ../automation/topics.json          — the batch checklist (pending/running/failed/done)
-//   ../published-long-posts/index.json + per-slug files — actually published drafts
-const TOPICS_URL = '../automation/topics.json';
-const PUB_INDEX_URL = '../published-long-posts/index.json';
-const PUB_FILE = slug => `../published-long-posts/${slug}.json`;
 
+  <section class="panel active" id="panel-notes">
+    <div class="stats" id="notes-stats"></div>
+    <div class="controls">
+      <input type="text" id="notes-search" placeholder="Search topic / exam / slug...">
+    </div>
+    <table>
+      <thead><tr><th>Topic</th><th>Exam</th><th>Subject</th><th>Status</th><th>Published</th><th>Draft link</th></tr></thead>
+      <tbody id="notes-rows"><tr><td colspan="6" class="msg">Loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="panel" id="panel-longposts">
+    <div class="stats" id="longposts-stats"></div>
+    <div class="controls">
+      <input type="text" id="longposts-search" placeholder="Search topic / exam / slug...">
+    </div>
+    <table>
+      <thead><tr><th>Topic</th><th>Exam</th><th>Status</th><th>NCERT cites</th><th>Self-check</th><th>Published</th><th>Draft link</th></tr></thead>
+      <tbody id="longposts-rows"><tr><td colspan="7" class="msg">Loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="panel" id="panel-questions">
+    <div class="stats" id="questions-stats"></div>
+    <div class="controls">
+      <input type="text" id="questions-search" placeholder="Search batch name...">
+    </div>
+    <table>
+      <thead><tr><th>Batch</th><th>Imported</th><th>Skipped</th><th>Errors</th><th>Imported at</th></tr></thead>
+      <tbody id="questions-rows"><tr><td colspan="5" class="msg">Loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="panel" id="panel-coverage">
+    <p class="msg" style="padding-left:0">
+      Each syllabus below comes from a checklist file in
+      <code>Automation/input sylabuss/</code>. A topic counts as "done" when a
+      published note's <code>topic</code> text matches a checklist row exactly
+      for the same exam. Exams with no checklist file (e.g. CTET, whose topics
+      aren't a fixed list) aren't shown here — see the Notes tab for those.
+    </p>
+    <div id="coverage-body"><div class="msg">Loading…</div></div>
+  </section>
+</main>
+<!-- Topic bank registry (Automation/core/src/topic-bank-sources.mjs,
+     mirrored by gen-topic-bank-sources-browser.mjs) — window.TopicBankSources.
+     Shared with notes-factory, question-factory and update-factory so there
+     is exactly one place to add a new exam/CSV. -->
+<script src="../shared/topic-bank-sources.js"></script>
+<script>
 async function safeFetchJson(url, fallback){
   try{
     const res = await fetch(url, { cache: 'no-store' });
@@ -132,67 +173,212 @@ async function safeFetchJson(url, fallback){
     return await res.json();
   }catch(e){ return fallback; }
 }
+async function safeFetchText(url, fallback){
+  try{
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) return fallback;
+    return await res.text();
+  }catch(e){ return fallback; }
+}
+function badge(status){ return `<span class="badge ${status}">${status}</span>`; }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function badge(status){
-  return `<span class="badge ${status}">${status}</span>`;
+// Minimal CSV parser (handles quoted fields with embedded commas, matches
+// the one Automation/core/src/build-index.mjs uses for the same files).
+function parseCsv(text){
+  const rows = []; let i = 0, field = '', row = [], inQuotes = false;
+  const pushField = () => { row.push(field); field = ''; };
+  const pushRow = () => { pushField(); rows.push(row); row = []; };
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i+1] === '"') { field += '"'; i += 2; continue; } inQuotes = false; i++; continue; }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ',') { pushField(); i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { pushRow(); i++; continue; }
+    field += c; i++;
+  }
+  if (field.length || row.length) pushRow();
+  if (!rows.length) return [];
+  const header = rows.shift().map(h => h.replace(/^﻿/, '').trim());
+  return rows.filter(r => r.length === header.length).map(r => Object.fromEntries(header.map((h, idx) => [h, r[idx]])));
 }
 
-async function load(){
-  const [topics, pubIndex] = await Promise.all([
-    safeFetchJson(TOPICS_URL, []),
-    safeFetchJson(PUB_INDEX_URL, [])
-  ]);
+/* ---------- Notes tab ---------- */
+async function loadNotes(){
+  const index = await safeFetchJson('../published-notes/index.json', []);
+  const notes = (await Promise.all(index.map(slug => safeFetchJson(`../published-notes/${slug}.json`, null))))
+    .filter(Boolean)
+    .map(n => ({
+      topic: n.topic, exam: n.examType, subject: n.subject,
+      status: n.wordpress?.status || 'draft',
+      publishedAt: n.wordpress?.publishedAt || n.createdAt || null,
+      link: n.wordpress?.link || null
+    }));
 
-  const published = await Promise.all(pubIndex.map(slug => safeFetchJson(PUB_FILE(slug), null)));
-  const pubBySlug = new Map();
-  published.filter(Boolean).forEach(p => pubBySlug.set(p.seo?.slug || p.slug, p));
-
-  const rows = topics.map(t => {
-    const pub = t.slug ? pubBySlug.get(t.slug) : null;
-    return {
-      topic: t.topic, exam: t.exam, status: t.status || 'pending',
-      slug: t.slug, error: t.error,
-      ncertCount: pub?.ncertCitationCount ?? null,
-      selfCheckClean: pub?.selfCheck?.clean ?? null,
-      selfCheckFlags: pub?.selfCheck?.flagCount ?? null,
-      publishedAt: pub?.wordpress?.publishedAt || null,
-      link: pub?.wordpress?.link || null
-    };
-  });
-
-  // stats
-  const counts = { done: 0, pending: 0, running: 0, failed: 0 };
-  rows.forEach(r => { counts[r.status] = (counts[r.status]||0) + 1; });
-  document.getElementById('stats').innerHTML = Object.entries(counts).map(([k,v]) =>
-    `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('') +
-    `<div class="stat"><b>${rows.length}</b><span>total topics</span></div>`;
+  document.getElementById('notes-stats').innerHTML =
+    `<div class="stat"><b>${notes.length}</b><span>published notes</span></div>`;
 
   function render(){
-    const q = document.getElementById('searchBox').value.trim().toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const filtered = rows.filter(r => {
-      if(statusFilter && r.status !== statusFilter) return false;
-      if(!q) return true;
-      return (r.topic||'').toLowerCase().includes(q) || (r.exam||'').toLowerCase().includes(q) || (r.slug||'').toLowerCase().includes(q);
-    });
-    const tbody = document.getElementById('rows');
-    if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="7" class="msg">No matching rows.</td></tr>'; return; }
-    tbody.innerHTML = filtered.map(r => `
+    const q = document.getElementById('notes-search').value.trim().toLowerCase();
+    const filtered = notes.filter(n => !q ||
+      (n.topic||'').toLowerCase().includes(q) || (n.exam||'').toLowerCase().includes(q));
+    const tbody = document.getElementById('notes-rows');
+    if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="6" class="msg">No matching rows.</td></tr>'; return; }
+    filtered.sort((a,b) => (b.publishedAt||'').localeCompare(a.publishedAt||''));
+    tbody.innerHTML = filtered.map(n => `
       <tr>
-        <td>${r.topic || ''}${r.error ? `<div class="small">⚠ ${r.error}</div>` : ''}</td>
-        <td>${r.exam || ''}</td>
-        <td>${badge(r.status)}</td>
-        <td>${r.ncertCount === null ? '—' : r.ncertCount}</td>
-        <td>${r.selfCheckClean === null ? '—' : (r.selfCheckClean ? '✅ clean' : `${badge('flagged')} ${r.selfCheckFlags} flag(s)`)}</td>
-        <td>${r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : '—'}</td>
-        <td>${r.link ? `<a href="${r.link}" target="_blank" rel="noopener">draft ↗</a>` : '—'}</td>
+        <td>${esc(n.topic)}</td>
+        <td>${esc(n.exam)}</td>
+        <td>${esc(n.subject)}</td>
+        <td>${badge(n.status)}</td>
+        <td>${n.publishedAt ? new Date(n.publishedAt).toLocaleDateString() : '—'}</td>
+        <td>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">draft ↗</a>` : '—'}</td>
       </tr>`).join('');
   }
-  document.getElementById('searchBox').addEventListener('input', render);
-  document.getElementById('statusFilter').addEventListener('change', render);
+  document.getElementById('notes-search').addEventListener('input', render);
+  render();
+  return notes;
+}
+
+/* ---------- Long posts tab ---------- */
+async function loadLongPosts(){
+  const index = await safeFetchJson('../published-long-posts/index.json', []);
+  const posts = (await Promise.all(index.map(slug => safeFetchJson(`../published-long-posts/${slug}.json`, null))))
+    .filter(Boolean)
+    .map(p => ({
+      topic: p.topic, exam: p.examType,
+      status: p.wordpress?.status || 'draft',
+      ncertCount: p.ncertCitationCount ?? null,
+      selfCheckClean: p.selfCheck?.clean ?? null,
+      selfCheckFlags: p.selfCheck?.flagCount ?? null,
+      publishedAt: p.wordpress?.publishedAt || p.createdAt || null,
+      link: p.wordpress?.link || null
+    }));
+
+  document.getElementById('longposts-stats').innerHTML =
+    `<div class="stat"><b>${posts.length}</b><span>published long posts</span></div>`;
+
+  function render(){
+    const q = document.getElementById('longposts-search').value.trim().toLowerCase();
+    const filtered = posts.filter(p => !q ||
+      (p.topic||'').toLowerCase().includes(q) || (p.exam||'').toLowerCase().includes(q));
+    const tbody = document.getElementById('longposts-rows');
+    if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="7" class="msg">No matching rows.</td></tr>'; return; }
+    filtered.sort((a,b) => (b.publishedAt||'').localeCompare(a.publishedAt||''));
+    tbody.innerHTML = filtered.map(p => `
+      <tr>
+        <td>${esc(p.topic)}</td>
+        <td>${esc(p.exam)}</td>
+        <td>${badge(p.status)}</td>
+        <td>${p.ncertCount === null ? '—' : p.ncertCount}</td>
+        <td>${p.selfCheckClean === null ? '—' : (p.selfCheckClean ? '✅ clean' : `${badge('flagged')} ${p.selfCheckFlags} flag(s)`)}</td>
+        <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
+        <td>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">draft ↗</a>` : '—'}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('longposts-search').addEventListener('input', render);
   render();
 }
-load();
+
+/* ---------- Question batches tab ---------- */
+async function loadQuestions(){
+  const index = await safeFetchJson('../published-questions/index.json', []);
+  const batches = (await Promise.all(index.map(slug =>
+    safeFetchJson(`../published-questions/${slug}.result.json`, null).then(r => r && ({ slug, ...r }))
+  ))).filter(Boolean);
+
+  document.getElementById('questions-stats').innerHTML =
+    `<div class="stat"><b>${batches.length}</b><span>imported batches</span></div>` +
+    `<div class="stat"><b>${batches.reduce((s,b) => s + (b.imported||0), 0)}</b><span>questions imported</span></div>`;
+
+  function render(){
+    const q = document.getElementById('questions-search').value.trim().toLowerCase();
+    const filtered = batches.filter(b => !q || (b.slug||'').toLowerCase().includes(q));
+    const tbody = document.getElementById('questions-rows');
+    if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="5" class="msg">No matching rows.</td></tr>'; return; }
+    filtered.sort((a,b) => (b.importedAt||'').localeCompare(a.importedAt||''));
+    tbody.innerHTML = filtered.map(b => `
+      <tr>
+        <td>${esc(b.slug)}</td>
+        <td>${b.imported ?? '—'}</td>
+        <td>${b.skipped ?? '—'}</td>
+        <td>${(b.errors && b.errors.length) ? `${badge('flagged')} ${b.errors.length}` : '—'}</td>
+        <td>${b.importedAt ? new Date(b.importedAt).toLocaleDateString() : '—'}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('questions-search').addEventListener('input', render);
+  render();
+}
+
+/* ---------- Topic coverage tab ---------- */
+// The syllabus registry (labels, CSV paths, examMatch) lives in
+// Automation/core/src/topic-bank-sources.mjs and is shared with
+// notes-factory, question-factory and update-factory via
+// shared/topic-bank-sources.js — add a new exam there, never here.
+// `examMatch` is the examType string published notes use for that program —
+// several DSSSB checklists share "DSSSB" because published notes don't
+// record which DSSSB sub-exam they target, so a note's topic text is
+// checked against every DSSSB checklist row.
+const SYLLABUSES = window.TopicBankSources
+  ? Object.values(window.TopicBankSources.TOPIC_BANK_SOURCES).map(s => ({ csvPath: s.csvPath, label: s.label, examMatch: s.examMatch }))
+  : (console.error('shared/topic-bank-sources.js failed to load — Topic Coverage is unavailable.'), []);
+
+async function loadCoverage(notes){
+  const publishedKeys = new Set(
+    notes.filter(n => n.exam && n.topic).map(n => `${n.exam.trim()}::${n.topic.trim()}`)
+  );
+
+  const sections = await Promise.all(SYLLABUSES.map(async syl => {
+    const csvText = await safeFetchText(`../${syl.csvPath.replace(/ /g, '%20')}`, null);
+    if(csvText === null) return { syl, missing: true, rows: [] };
+    const rows = parseCsv(csvText).map(r => ({
+      subject: r.Subject, topic: r.Topic,
+      done: publishedKeys.has(`${syl.examMatch}::${(r.Topic||'').trim()}`)
+    }));
+    return { syl, missing: false, rows };
+  }));
+
+  const body = document.getElementById('coverage-body');
+  body.innerHTML = sections.map(({ syl, missing, rows }) => {
+    if(missing){
+      return `<div class="section-title">${esc(syl.label)}</div><div class="msg">Checklist file not found.</div>`;
+    }
+    const done = rows.filter(r => r.done).length;
+    const pct = rows.length ? Math.round((done / rows.length) * 100) : 0;
+    return `
+      <div class="section-title">${esc(syl.label)} —
+        <span class="coverage-bar"><div style="width:${pct}%"></div></span>
+        ${done} / ${rows.length} topics done (${pct}%)
+      </div>
+      <table>
+        <thead><tr><th>Subject</th><th>Topic</th><th>Status</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr><td>${esc(r.subject)}</td><td>${esc(r.topic)}</td><td>${badge(r.done ? 'done' : 'pending')}</td></tr>`).join('')}
+        </tbody>
+      </table>`;
+  }).join('');
+}
+
+async function loadAll(){
+  const notes = await loadNotes();
+  loadLongPosts();
+  loadQuestions();
+  loadCoverage(notes);
+}
+loadAll();
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`panel-${tab.dataset.panel}`).classList.add('active');
+  });
+});
 </script>
 <script>
 /* Three-state theme switch: system -> light -> dark -> system.

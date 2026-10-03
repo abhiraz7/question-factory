@@ -81,6 +81,9 @@ SUBJECT_MAP = {
     "हिंदी": ("Hindi", 100),
     "अंग्रेजी": ("English", 80),
     "गणित": ("Maths", 80),
+    "विज्ञान": ("Science", 80),
+    "इतिहास": ("History", 80),
+    "भूगोल": ("Geography", 80),
 }
 DEFAULT_SUBJECT = ("Auto-detect", 80)
 
@@ -94,13 +97,19 @@ def load_topics(start: int, limit):
     with open(CSV_PATH, encoding="utf-8-sig", newline="") as f:
         import csv
         reader = csv.reader(f)
-        next(reader)  # malformed header, read by position instead
+        next(reader)  # header is S.No.,Subject,Topic — read by position instead
         for row in reader:
-            if len(row) < 4 or not row[0].strip():
+            # CSV_PATH's "v2" regeneration dropped a 4th Exam column this
+            # loop used to read (row[3]) — every row is 3 columns now, so
+            # `len(row) < 4` skipped every single row and this pipeline has
+            # been silently processing zero topics on every run since. This
+            # script only ever points at the BPSC CSV, so the exam is a
+            # fixed constant, not a per-row column, now.
+            if len(row) < 3 or not row[0].strip():
                 continue
             subject_raw = row[1].strip()
             topic = row[2].strip()
-            exam = row[3].strip()
+            exam = "BPSC TRE"
             subject, hindi_pct = SUBJECT_MAP.get(subject_raw, DEFAULT_SUBJECT)
             rows.append({
                 "no": row[0].strip(), "subject_raw": subject_raw, "subject": subject,
