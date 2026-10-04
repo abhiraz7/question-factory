@@ -125,7 +125,7 @@ async function main() {
   check('Identical text scores near-1.0 similarity', closest[0].slug === 'identical' && closest[0].similarity > 0.9, JSON.stringify(closest));
   check('Unrelated text scores near-0 similarity', closest.find(c => c.slug === 'unrelated').similarity < 0.05);
   const workflowWiring = execFileSync('grep', ['-l', 'similarity-check.mjs',
-    '.github/workflows/publish-note.yml', '.github/workflows/publish-long-post.yml'
+    '.github/workflows/pub-note.yml', '.github/workflows/pub-lpost.yml'
   ], { cwd: REPO_ROOT, encoding: 'utf8' }).trim().split('\n');
   check('Both publish workflows call the similarity checker', workflowWiring.length === 2);
 

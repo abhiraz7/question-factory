@@ -18,7 +18,7 @@ question-factory/                 MCQ tool (self-contained)
 notes-factory/                    notes tool (self-contained)
 pending-notes/                    drop zone: <slug>.json files awaiting WordPress publish
 published-notes/                  processed notes, stamped with their WordPress post id + link
-.github/workflows/publish-note.yml   the WordPress publishing automation
+.github/workflows/pub-note.yml   the WordPress publishing automation
 ```
 
 ## Security model

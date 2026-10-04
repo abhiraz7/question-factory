@@ -46,7 +46,7 @@ honesty rules this complements.
   "question_types": ["calculation", "application", "trap"],
   "sources": ["NCERT Maths Class 6, Ch. 3"],
 
-  // Added by the publish workflow (publish-note.yml / publish-long-post.yml),
+  // Added by the publish workflow (pub-note.yml / pub-lpost.yml),
   // never by the model.
   "postId": "1234",
   "link": "https://examnotespdf.in/...",
@@ -67,7 +67,7 @@ honesty rules this complements.
    contract and parse it back out of the AI's reply (see each tool's
    `extractContentMemory()` / `parseResponse()`). If present, it rides along
    inside the pending JSON bundle as `.contentMemory`.
-2. **Publish time**: `publish-note.yml` / `publish-long-post.yml` read
+2. **Publish time**: `pub-note.yml` / `pub-lpost.yml` read
    `.contentMemory` off the bundle right after a successful WordPress publish,
    merge in `id`/`type`/`topic`/`subject`/`exam`/`postId`/`link`/`published`,
    and commit the result here. A bundle with no `.contentMemory` (older
@@ -96,7 +96,7 @@ same `exam`+`subject`. The result fills the Master Prompt's
 the model states its actual final choice in this record's `flavour` field.
 
 Separately, `Automation/core/src/similarity-check.mjs` runs inside
-`publish-note.yml`/`publish-long-post.yml` right after a successful publish —
+`pub-note.yml`/`pub-lpost.yml` right after a successful publish —
 a local 5-gram Jaccard-overlap check against the last 30 published articles,
 appended to the article's own `publisherNotes` field as a warning-only,
 informational note (never a rejection gate; not a claim about how any search

@@ -72,7 +72,7 @@ WordPress's REST API refuses to write post meta that isn't registered for REST, 
 
 ### 4. That's it
 
-The workflow (`.github/workflows/publish-note.yml`) and folders (`pending-notes/`, `published-notes/`) are already in the repo.
+The workflow (`.github/workflows/pub-note.yml`) and folders (`pending-notes/`, `published-notes/`) are already in the repo.
 
 ## Caveats you should know
 

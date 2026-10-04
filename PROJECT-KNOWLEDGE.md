@@ -152,7 +152,7 @@ free/rotating credentials). GitHub Actions secrets don't fit that — they're
 static per-repo config, not something you swap per run. So generation
 happens locally; only the *output* (the same `pending-long-posts/<slug>.json`
 shape the browser tool produces) gets pushed, and the existing
-`publish-long-post.yml` workflow (unchanged) picks it up from there.
+`pub-lpost.yml` workflow (unchanged) picks it up from there.
 
 ### 3.1 Module map
 
@@ -228,7 +228,7 @@ in `topics.json`:
 1. mark it `running`, increment `attempts`
 2. call `generateOne()` (§3.2 + §3.3)
 3. write `pending-long-posts/<slug>.json`
-4. `git add` + `git commit` + `git push` immediately (so `publish-long-post.yml`
+4. `git add` + `git commit` + `git push` immediately (so `pub-lpost.yml`
    starts drafting to WordPress right away, not batched at the end)
 5. sleep `COOLDOWN_SECONDS` (default 120s) before the next topic
 6. on any failure, mark the topic `failed` with the error message and move on
@@ -410,7 +410,7 @@ actually live), and renders a searchable/filterable table: topic, exam,
 status, NCERT citation count, self-check clean/flagged, publish date, draft
 link. No secrets involved — safe to host on GitHub Pages like everything
 else. `published-long-posts/index.json` is maintained additively by
-`publish-long-post.yml` on every successful WordPress draft creation (a
+`pub-lpost.yml` on every successful WordPress draft creation (a
 small `jq` append in the workflow's existing success path), since GitHub
 Pages can't directory-list and the dashboard needs *some* file telling it
 which slugs exist.
@@ -459,9 +459,9 @@ Notes-factory/
 ├── pending-notes/ published-notes/     same pattern, for notes-factory
 ├── pending-questions/ published-questions/   same pattern, for question-factory
 ├── .github/workflows/
-│   ├── publish-long-post.yml    WordPress-drafting automation for long posts
-│   ├── publish-note.yml         same, for notes
-│   └── publish-questions.yml    same, for questions
+│   ├── pub-lpost.yml    WordPress-drafting automation for long posts
+│   ├── pub-note.yml         same, for notes
+│   └── pub-quiz.yml    same, for questions
 └── _archive/                    retired/superseded local working data (gitignored)
 ```
 

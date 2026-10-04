@@ -24,7 +24,7 @@ Automation/core/src/validate-bundle.mjs           ← Node, same parser +
 pending-long-posts/<slug>.json  →  git commit + push
         │
         ▼
-.github/workflows/publish-long-post.yml  (unchanged — picks this up
+.github/workflows/pub-lpost.yml  (unchanged — picks this up
                                            exactly like a manual save)
 ```
 

@@ -2128,16 +2128,16 @@ function buildBundle(){
     seo: state.seo, bodyHtml: state.bodyHtml, publisherNotes: state.publisherNotes,
     createdAt: new Date().toISOString()
   };
-  // Feeds Automation/content-memory/ — see publish-note.yml, which writes this
+  // Feeds Automation/content-memory/ — see pub-note.yml, which writes this
   // out as a standalone record after a successful WordPress publish. Absent
   // entirely (older prompt reply, or the block failed to parse) is fine —
   // the workflow just skips writing a record for this article.
   if(state.contentMemory) bundle.contentMemory = state.contentMemory;
-  // Carry the old WordPress post id forward so publish-note.yml knows to
+  // Carry the old WordPress post id forward so pub-note.yml knows to
   // PUT-update that existing post instead of creating a new draft.
   if(state.isUpdate && state.wordpress) bundle.wordpress = state.wordpress;
   // Optional PDF attachment (already uploaded to Media Library by the user) —
-  // publish-note.yml sets this as _enp_pdf_url so the template can render a
+  // pub-note.yml sets this as _enp_pdf_url so the template can render a
   // download button + PDF Embedder viewer. Read straight from the field,
   // not `state` — it's note metadata, not part of the AI prompt.
   const pdfUrlVal = (document.getElementById('pdfUrl').value || '').trim();
@@ -2759,7 +2759,7 @@ function vCheckPipelineArtifacts(bodyHtml, seo){
   // via.placeholder.com is EXPECTED exactly once, in the mandatory featured
   // <img> the VISUAL/HTML SYSTEM requires right after the intro — a human
   // replaces it with the real uploaded image before hitting Publish on a
-  // draft (publish-note.yml, unlike publish-long-post.yml, has no automatic
+  // draft (pub-note.yml, unlike pub-lpost.yml, has no automatic
   // media-upload/swap step). Only flag it showing up more than once, or
   // outside an <img> tag (e.g. the AI mentioning it in prose by mistake).
   const placeholderImgs = (html.match(/<img[^>]*via\.placeholder\.com[^>]*>/gi)||[]).length;

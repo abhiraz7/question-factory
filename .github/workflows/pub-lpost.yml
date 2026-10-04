@@ -1,4 +1,4 @@
-name: Publish long post to WordPress
+name: PUB.LPOST
 
 on:
   push:
@@ -147,7 +147,7 @@ jobs:
           mkdir -p Automation/content-memory
           failed=0
 
-          # See publish-note.yml for the twin of this function — same
+          # See pub-note.yml for the twin of this function — same
           # content-memory record shape (Automation/content-memory/README.md),
           # written here only for long posts. Never fails the publish itself.
           write_content_memory(){
@@ -168,7 +168,7 @@ jobs:
             git add "Automation/content-memory/$slug.json"
           }
 
-          # See publish-note.yml for the twin of this function — same local,
+          # See pub-note.yml for the twin of this function — same local,
           # non-blocking 5-gram similarity check, informational only.
           write_similarity_note(){
             local f="$1"
@@ -203,7 +203,7 @@ jobs:
             # An update run (see update-factory's revision flow) carries the old
             # wordpress.postId forward in the pending file itself — that's the
             # signal to PUT-update the existing post instead of the normal
-            # dedupe-guard/POST-create path below. Mirrors publish-note.yml.
+            # dedupe-guard/POST-create path below. Mirrors pub-note.yml.
             update_post_id="$(jq -r '.wordpress.postId // empty' "$f")"
 
             # dedupe guard: re-uploading the same slug WITHOUT a carried-over

@@ -60,7 +60,7 @@ CSV topic row
   -> Automation/core/src/validate-bundle.mjs           (parse + hard-fail gate + bundle)
   -> pending-long-posts/<slug>.json           (if hard fails are empty)
   -> git commit + push
-  -> .github/workflows/publish-long-post.yml  (existing, unchanged)
+  -> .github/workflows/pub-lpost.yml  (existing, unchanged)
   -> WordPress draft
 ```
 See `Automation/long-post-runner/run_pipeline.py` for the orchestrator, and its `--sanity-test` mode for exercising the parse/validate/bundle path with zero LLM calls and zero browser.

@@ -1,4 +1,4 @@
-name: Publish note to WordPress
+name: PUB.NOTE
 
 on:
   push:
@@ -283,7 +283,7 @@ jobs:
             # execve() argument-size limit ("Argument list too long" / E2BIG),
             # which curl can't even start under, and which this loop's
             # `|| echo "000"` was silently misreporting as a network failure.
-            # Ported from publish-long-post.yml, which hit this exact incident
+            # Ported from pub-lpost.yml, which hit this exact incident
             # (a 172KB pending file, logged as three bogus "connection attempt
             # failed" retries) and fixed it there — this workflow was never
             # updated to match, so notes kept failing this way. echo is a
@@ -357,7 +357,7 @@ jobs:
               # Maintain a flat index of published slugs — GitHub Pages can't
               # directory-list, so reporting/index.html reads this file to know
               # which published-notes/*.json files exist (mirrors the same
-              # index publish-long-post.yml maintains for published-long-posts/).
+              # index pub-lpost.yml maintains for published-long-posts/).
               [ -f "published-notes/index.json" ] || echo "[]" > "published-notes/index.json"
               jq --arg s "$slug" '(. - [$s]) + [$s]' "published-notes/index.json" > /tmp/notes-pub-index.json \
                 && mv /tmp/notes-pub-index.json "published-notes/index.json"

@@ -178,7 +178,7 @@ function vCheckPipelineArtifacts(bodyHtml, seo){
   // via.placeholder.com is EXPECTED exactly once, in the mandatory featured
   // <img> the VISUAL/HTML SYSTEM requires right after the intro — a human
   // replaces it with the real uploaded image before hitting Publish on a
-  // draft (publish-note.yml, unlike publish-long-post.yml, has no automatic
+  // draft (pub-note.yml, unlike pub-lpost.yml, has no automatic
   // media-upload/swap step). Only flag it showing up more than once, or
   // outside an <img> tag (e.g. the AI mentioning it in prose by mistake).
   const placeholderImgs = (html.match(/<img[^>]*via\.placeholder\.com[^>]*>/gi)||[]).length;
