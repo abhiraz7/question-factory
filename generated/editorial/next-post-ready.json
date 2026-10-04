@@ -22,12 +22,32 @@
       "sourceConfidence": 0
     },
     "learner_signals": {
-      "dataAvailable": false,
-      "queries": [],
+      "dataAvailable": true,
+      "queries": [
+        {
+          "query": "ctet special education",
+          "clicks": 0,
+          "impressions": 6,
+          "ctr": 0,
+          "position": 9.2,
+          "overlap": 1
+        },
+        {
+          "query": "inclusive education ctet notes",
+          "clicks": 0,
+          "impressions": 6,
+          "ctr": 0,
+          "position": 7,
+          "overlap": 1
+        }
+      ],
       "weakCoverage": false,
-      "dateRange": null,
-      "confidence": 0,
-      "note": "OAuth token exchange failed: invalid_client: The provided client secret is invalid.. Search Console was not queried this run. (If this says \"invalid_client\" or \"unauthorized_client\", GOOGLE_OAUTH_CLIENT_ID/SECRET don't match the app that issued the refresh token. If it says \"invalid_grant\", the refresh token itself is wrong, expired, or revoked — note that an API key is NOT a refresh token and will fail exactly this way.)"
+      "dateRange": {
+        "startDate": "2026-09-03",
+        "endDate": "2026-10-01"
+      },
+      "confidence": 0.02,
+      "note": "2 matching queries found for this topic in the 2026-09-03 to 2026-10-01 window."
     },
     "difficulty": {
       "dataAvailable": false,
@@ -107,7 +127,7 @@
       "recommendedStructures": [],
       "confidence": 0.1
     },
-    "last_updated": "2026-10-03T19:06:27.471Z"
+    "last_updated": "2026-10-04T12:42:06.341Z"
   },
   "evidence": {
     "queryText": "Piaget cognitive development stages CDP",
@@ -223,6 +243,6 @@
     "confidence": 0.13
   },
   "confidence": 0.13,
-  "generatedAt": "2026-10-03T19:06:27.472Z",
+  "generatedAt": "2026-10-04T12:42:06.341Z",
   "mode": "full"
 }
