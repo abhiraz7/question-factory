@@ -181,7 +181,8 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   </fieldset>
 
   <label>Topic (type any topic — suggestions shown from the CDP list, but any subject's topic is fine)</label>
-  <input type="text" id="topic" list="topicSuggestions" placeholder="e.g. Photosynthesis, Mughal Empire, Growth & Development..." oninput="this.classList.remove('fieldErr')">
+  <input type="text" id="topic" list="topicSuggestions" placeholder="e.g. Photosynthesis, Mughal Empire, Growth & Development..." oninput="this.classList.remove('fieldErr'); checkTopicAgainstPublished()">
+  <div id="topicLiveWarn"></div>
   <datalist id="topicSuggestions"></datalist>
 
   <details id="topicBankDetails" ontoggle="openTopicBank()" style="margin-top:8px">
@@ -311,7 +312,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <label>Preview (how the notes body will render)</label>
   <p class="hint" style="margin-top:0">✏️ Click inside the preview to edit it directly, like a document — your changes sync back into the HTML above automatically.</p>
-  <iframe class="previewFrame" id="previewFrame" sandbox="allow-same-origin"></iframe>
+  <iframe class="previewFrame" id="previewFrame" sandbox="allow-same-origin" title="Notes body preview"></iframe>
 
   <fieldset style="margin-top:16px">
     <legend>🛡️ Rank Math validation gate</legend>
@@ -553,7 +554,7 @@ async function loadTopicBankForSource(sourceKey){
     show(msg('topicBankMsg'),'bad','Could not load the topic bank: '+e.message);
   }
 }
-function renderTopicBank(){
+async function renderTopicBank(){
   const listEl = document.getElementById('topicBankList');
   if(!topicBankRows){ listEl.innerHTML = ''; return; }
   const subj = document.getElementById('topicBankSubject').value;
@@ -562,11 +563,17 @@ function renderTopicBank(){
   const rows = topicBankRows
     .map((r,i) => ({...r, idx:i}))
     .filter(r => r.subjectLabel === subj && (!q || r.topic.toLowerCase().includes(q)));
+  // Tag rows that already look published — best-effort, uses whatever's
+  // cached; doesn't block rendering on the fetch if it's still in flight.
+  const slugs = publishedSlugsCache || [];
   listEl.innerHTML = rows.length
-    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
-        <span style="flex:1;font-size:13px">${r.topic.replace(/</g,'&lt;')}${r.post ? ` <span style="color:var(--muted);font-size:11px">(${r.post.replace(/</g,'&lt;')})</span>` : ''}</span>
+    ? rows.map(r => {
+        const already = slugs.length ? findPublishedMatch(r.topic, slugs) : null;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)${already?';opacity:0.55':''}">
+        <span style="flex:1;font-size:13px">${r.topic.replace(/</g,'&lt;')}${already ? ` <span style="color:var(--muted);font-size:11px">(already published: ${already})</span>` : ''}</span>
         <button class="btn small ghost" onclick="useTopicBankRow(${r.idx})">Use</button>
-      </div>`).join('')
+      </div>`;
+      }).join('')
     : '<p class="hint">No topics match.</p>';
 }
 function useTopicBankRow(idx){
@@ -591,6 +598,65 @@ function useTopicBankRow(idx){
   document.querySelectorAll('.examChk').forEach(cb => { cb.checked = cb.value.toUpperCase().includes(source.examMatch.toUpperCase()); });
   renderRefUrlList();
   doCopy(r.topic, null, msg('topicBankMsg'), 'Topic copied and filled in above — Exam/Subject set to match.');
+  checkTopicAgainstPublished();
+}
+
+/* ---- "is this topic already published?" early-warning check (Step 1) ----
+   Separate from vCheckUniqueness (Step 3's exact-focus-keyword hard gate,
+   checked against published-notes/+pending-notes/ via N+1 GitHub Contents
+   API calls, only runs after a full AI generation) — this is a much
+   cheaper, earlier, approximate signal: published-notes/index.json (a flat
+   slug array already maintained by pub-note.yml) fetched ONCE via
+   raw.githubusercontent.com (unauthenticated, not subject to the GitHub
+   REST API's rate limit), then checked by plain word overlap the moment
+   someone finishes typing a topic — before they've written anything else,
+   not after a wasted generation run. Deliberately approximate: it only
+   needs to catch "you're about to redo something", not be exhaustive;
+   vCheckUniqueness later is still the real hard gate. */
+var publishedSlugsCache = null;
+async function loadPublishedSlugs(){
+  if(publishedSlugsCache) return publishedSlugsCache;
+  try{
+    const res = await fetch(`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/published-notes/index.json`);
+    publishedSlugsCache = res.ok ? await res.json() : [];
+  }catch(e){ publishedSlugsCache = []; }
+  return publishedSlugsCache;
+}
+function topicWords(text){
+  return window.BM25 ? window.BM25.tokenize(text) : String(text||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2);
+}
+// Best-matching slug for a topic string, or null if nothing overlaps enough
+// to be worth flagging. Requires >=2 shared words, not 1 — a single common
+// word (e.g. "ratio") would false-positive against half the slug list.
+function findPublishedMatch(topic, slugs){
+  const words = new Set(topicWords(topic));
+  if(words.size < 2) return null;
+  let best = null, bestScore = 1;
+  for(const slug of slugs){
+    const slugWords = new Set(topicWords(slug.replace(/-/g,' ')));
+    let overlap = 0;
+    for(const w of words) if(slugWords.has(w)) overlap++;
+    if(overlap > bestScore){ bestScore = overlap; best = slug; }
+  }
+  return best;
+}
+var topicCheckTimer = null;
+function checkTopicAgainstPublished(){
+  clearTimeout(topicCheckTimer);
+  const el = document.getElementById('topicLiveWarn');
+  if(!el) return;
+  const topic = document.getElementById('topic').value.trim();
+  if(!topic){ el.className=''; el.innerHTML=''; return; }
+  topicCheckTimer = setTimeout(async ()=>{
+    // the field may have changed (or been cleared) during the debounce wait
+    if(document.getElementById('topic').value.trim() !== topic) return;
+    const slugs = await loadPublishedSlugs();
+    const match = findPublishedMatch(topic, slugs);
+    el.className = match ? 'msg show warn' : '';
+    el.innerHTML = match
+      ? `⚠ A note matching this topic may already exist: <code>${match}</code> — check before generating a duplicate.`
+      : '';
+  }, 400);
 }
 
 function initSelectors(){
@@ -1021,6 +1087,7 @@ async function loadMasterPrompt(){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  loadPublishedSlugs(); // fire-and-forget warm-up so the cache is already populated by the time someone finishes typing a topic
   document.getElementById('masterPromptFile').addEventListener('change', function(){
     const f = this.files && this.files[0];
     if(!f) return;
@@ -1360,16 +1427,29 @@ async function copyPrompt(btn){
   const out = document.getElementById('promptOut');
   show(msg('pMsg'),'warn','Loading master prompt…');
   const full = await buildPrompt();
-  out.value = full;
   const words = full.trim().split(/\s+/).length;
   document.getElementById('pStats').innerHTML = `<div class="stat"><b>${words.toLocaleString()}</b>words in prompt</div><div class="stat"><b>${full.length.toLocaleString()}</b>chars in prompt</div><div class="stat"><b>${state.examType}</b>exam type</div><div class="stat"><b>${state.hindiPercent}% / ${100-state.hindiPercent}%</b>Hindi / English</div>`;
   if(full.length > MAX_COPY_PROMPT_CHARS){
+    // Leave promptOut empty too, not just builtPromptText — nav(1)'s only
+    // gate checks promptOut.value.trim(), so a stale non-empty value here
+    // would let the user tap "Next" past an oversized/unusable prompt.
     builtPromptText = null;
+    out.value = '';
     show(msg('pMsg'),'bad',`Prompt is ${full.length.toLocaleString()} characters — over the ${MAX_COPY_PROMPT_CHARS.toLocaleString()}-char limit, so it will NOT be copied (this prevents a silently truncated paste). Reduce scope for this run — a different SUBJECT pulls in fewer reference sources — then tap "Build prompt" again.`);
     return;
   }
+  out.value = full;
   builtPromptText = full;
-  show(msg('pMsg'),'ok',`Prompt built (${words.toLocaleString()} words, ${full.length.toLocaleString()} chars — under the ${MAX_COPY_PROMPT_CHARS.toLocaleString()}-char limit). Tap "Copy whole prompt".`);
+  // Mobile has no working "Copy whole prompt" path (that button is PC-only —
+  // mobile clipboards/browsers silently truncate past ~8-10k chars), so the
+  // parts accordion is the only real way a phone user gets this prompt out
+  // of the page. Populate + open it here rather than leaving it for the user
+  // to discover and expand manually, matching what its own summary text
+  // already promises ("opens automatically after building").
+  renderCopyParts('partsButtons', full, 'pMsg');
+  const partsWrap = document.getElementById('partsWrap');
+  if(partsWrap) partsWrap.open = true;
+  show(msg('pMsg'),'ok',`Prompt built (${words.toLocaleString()} words, ${full.length.toLocaleString()} chars — under the ${MAX_COPY_PROMPT_CHARS.toLocaleString()}-char limit). On PC, tap "Copy whole prompt" above — on mobile, use "Copy the prompt in parts" below (now open).`);
 }
 async function copyWholePrompt(btn){
   if(!builtPromptText){
@@ -2280,6 +2360,7 @@ async function addToQueue(btn){
   show(m,'ok',`Added "${state.seo.slug}" to the batch queue (${q.length} queued). Start the next note at Step 1, or post the queue when everyone's done.`);
   clearDraft();
   state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null };
+  clearUpdateMode(); // otherwise the next note silently starts in "update mode" (stale oldSeo/oldBodyHtml/wordpress) with the old file name and success banner still showing
   cur = 0; render();
 }
 async function postQueue(btn){
@@ -2513,6 +2594,7 @@ Image Gen Prompt:    ${state.seo.imagePrompt || ''}`;
 function resetAll(){
   if(!confirm('Clear this note and start over?')) return;
   state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null };
+  clearUpdateMode(); // same reason as addToQueue() — otherwise stale oldSeo/oldBodyHtml/wordpress and the old "Loaded ... for update" banner survive into the fresh note
   accumulatedRaw = '';
   clearDraft();
   document.getElementById('promptOut').value='';
@@ -2913,7 +2995,7 @@ async function runBacklogAudit(btn){
   const rows = files.map(f=>{
     const seo = (f.data && f.data.seo) || {};
     const r = vRunChecks(seo, (f.data && f.data.bodyHtml) || '');
-    return { name:f.name, slug: seo.slug||f.name, words:r.words, density:r.density, hardPass:r.hardPass, failLabels:r.hardFails.map(c=>c.id) };
+    return { name:f.name, slug: seo.slug||f.name, hardPass:r.hardPass, failLabels:r.hardFails.map(c=>c.id) };
   });
   const kwMap = {};
   files.forEach(f=>{ const k=vNormalize(f.data.seo && f.data.seo.focusKeyword); if(k) (kwMap[k]=kwMap[k]||[]).push(f.name); });
@@ -2928,11 +3010,9 @@ function renderBacklogResults(rows){
   const wrap = document.getElementById('backlogResults');
   if(!wrap) return;
   wrap.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-  <tr style="text-align:left;border-bottom:2px solid var(--line)"><th style="padding:6px 4px">Note</th><th style="padding:6px 4px">Words</th><th style="padding:6px 4px">Density</th><th style="padding:6px 4px">Result</th></tr>
+  <tr style="text-align:left;border-bottom:2px solid var(--line)"><th style="padding:6px 4px">Note</th><th style="padding:6px 4px">Result</th></tr>
   ${rows.map(r=>`<tr style="border-bottom:1px solid var(--line-soft)">
     <td style="padding:6px 4px">${r.slug}</td>
-    <td style="padding:6px 4px">${r.words.toLocaleString()}</td>
-    <td style="padding:6px 4px">${r.density.toFixed(2)}%</td>
     <td style="padding:6px 4px;color:${r.hardPass?'var(--ok)':'var(--bad)'}">${r.hardPass?'✅ pass':'❌ '+r.failLabels.join(', ')}</td>
   </tr>`).join('')}
   </table></div>`;
