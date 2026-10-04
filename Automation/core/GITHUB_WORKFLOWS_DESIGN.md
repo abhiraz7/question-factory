@@ -39,8 +39,8 @@ The design below is purely about how/when to call it, in CI, safely.
 POST-RUN ────┼─ Content memory analysis     (buildEditorialSignature over the full
              │                              Automation/content-memory/ set)
              ├─ Similarity analysis         (already exists: similarity-check.mjs,
-             │                              already wired into publish-note.yml /
-             │                              publish-long-post.yml)
+             │                              already wired into pub-note.yml /
+             │                              pub-lpost.yml)
              ├─ Topic coverage              (buildTopicState's coverage layer)
              └─ Statistical analysis        (editorial-statistics.mjs signals)
                      ↓
@@ -69,10 +69,10 @@ job yet. Start with the simplest thing that satisfies spec section 14
 ("every successful deployment should trigger..."):
 
 ```yaml
-# .github/workflows/post-deploy-editorial.yml.draft  (NOT ACTIVE — rename to
+# .github/workflows/ed-refresh.yml.draft  (NOT ACTIVE — rename to
 # .yml and review carefully before this ever becomes a real workflow file)
 #
-# name: Post-deploy editorial refresh
+# name: ED.REFRESH
 # on:
 #   workflow_run:
 #     workflows: ["Publish Note", "Publish Long Post"]   # whatever the real

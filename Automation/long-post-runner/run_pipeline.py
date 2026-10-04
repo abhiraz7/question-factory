@@ -1,5 +1,5 @@
 """End-to-end automation: CSV topic list -> DeepSeek (browser) -> validated
-pending-long-posts/<slug>.json -> git push -> existing publish-long-post.yml
+pending-long-posts/<slug>.json -> git push -> existing pub-lpost.yml
 GitHub Action drafts it to WordPress.
 
 Everything runs from the terminal except the DeepSeek exchange itself,
@@ -404,7 +404,7 @@ def git_commit_and_push(file_path: Path, message: str):
     ).stdout.strip()
 
     subprocess.run(["git", "push", push_target, f"HEAD:{branch}"], cwd=str(REPO_ROOT), check=True)
-    print(f"  Pushed — publish-long-post.yml will pick this up and draft it to WordPress.")
+    print(f"  Pushed — pub-lpost.yml will pick this up and draft it to WordPress.")
 
 
 # --------------------------------------------------------------- sanity --
@@ -554,7 +554,7 @@ def run_topics_manual(topics, published_slugs, pending_pairs):
             out_path.write_text(json.dumps(result["bundle"], ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"  Wrote {out_path.name} ({result['wordCount']} words)")
 
-            push_choice = input("  Push to GitHub now? (triggers publish-long-post.yml) [Y/n]: ").strip().lower()
+            push_choice = input("  Push to GitHub now? (triggers pub-lpost.yml) [Y/n]: ").strip().lower()
             if push_choice in ("", "y", "yes"):
                 git_commit_and_push(out_path, f"Add long post: {slug} [automation]")
             else:

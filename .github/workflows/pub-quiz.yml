@@ -1,4 +1,4 @@
-name: Publish questions to WordPress
+name: PUB.QUIZ
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
         env:
           WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
           # Deliberately separate from WP_USERNAME/WP_APP_PASSWORD (used by
-          # publish-note.yml): the quiz importer requires manage_options
+          # pub-note.yml): the quiz importer requires manage_options
           # (Administrator), while the notes workflow only needs publish_posts
           # (Author, the "Automated Publisher" account). Reusing the Author
           # credentials here always fails with quiz_import_unauthorized (401)
@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "${WP_SITE_URL:-}" ] || [ -z "${WP_USERNAME:-}" ] || [ -z "${WP_APP_PASSWORD:-}" ] || [ -z "${QUIZ_IMPORT_SECRET:-}" ]; then
-            echo "::error::Missing secrets. Set WP_SITE_URL, QUIZ_WP_USERNAME, QUIZ_WP_APP_PASSWORD and QUIZ_IMPORT_SECRET in Settings -> Secrets and variables -> Actions. QUIZ_WP_USERNAME must be an Administrator account (manage_options) - the Author-level WP_USERNAME used by publish-note.yml will not work here. QUIZ_IMPORT_SECRET must match the QUIZ_IMPORT_SECRET constant defined in wp-config.php on the server (see question-factory/README.md)."
+            echo "::error::Missing secrets. Set WP_SITE_URL, QUIZ_WP_USERNAME, QUIZ_WP_APP_PASSWORD and QUIZ_IMPORT_SECRET in Settings -> Secrets and variables -> Actions. QUIZ_WP_USERNAME must be an Administrator account (manage_options) - the Author-level WP_USERNAME used by pub-note.yml will not work here. QUIZ_IMPORT_SECRET must match the QUIZ_IMPORT_SECRET constant defined in wp-config.php on the server (see question-factory/README.md)."
             exit 1
           fi
 
@@ -85,7 +85,7 @@ jobs:
             # command-line argument — a large question batch's CSV easily
             # exceeds the OS's execve() argument-size limit ("Argument list
             # too long" / E2BIG), which curl can't even start under. This is
-            # the exact same incident publish-note.yml and publish-long-post.yml
+            # the exact same incident pub-note.yml and pub-lpost.yml
             # both hit and fixed; ported here for the same reason before it
             # bit a large question batch too.
             jq -Rs '{csv: .}' "$f" > /tmp/quiz-import-body.json

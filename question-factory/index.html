@@ -222,7 +222,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   </fieldset>
   <button class="btn green" onclick="tryRun(autoSaveQuestionsToGithub,this)">☁️ Auto-save to GitHub</button>
   <div class="msg" id="qfSendMsg"></div>
-  <div class="privacyNote">Pushes the CSV straight into <code>pending-questions/</code> in the repo. If the owner has set up the <code>publish-questions.yml</code> workflow, it's imported into the website automatically within about a minute (as draft — still needs a human to publish it). If not set up yet, it just sits in <code>pending-questions/</code> until someone uploads it manually via Quiz App → Import CSV.</div>
+  <div class="privacyNote">Pushes the CSV straight into <code>pending-questions/</code> in the repo. If the owner has set up the <code>pub-quiz.yml</code> workflow, it's imported into the website automatically within about a minute (as draft — still needs a human to publish it). If not set up yet, it just sits in <code>pending-questions/</code> until someone uploads it manually via Quiz App → Import CSV.</div>
   <details><summary>🔍 Verify answer index (recommended before first upload)</summary><div>
     <p class="hint">This shows exactly what will be sent to the website. The "correct" column stays 1=A, 2=B, 3=C, 4=D — check a few rows against the question text to be sure.</p>
     <div id="convCheck" style="font-size:12px;max-height:220px;overflow-y:auto"></div>

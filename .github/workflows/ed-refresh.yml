@@ -1,6 +1,6 @@
-name: Post-deploy editorial refresh
+name: ED.REFRESH
 
-# ACTIVE. This started as post-deploy-editorial.yml.draft (GitHub Actions
+# ACTIVE. This started as ed-refresh.yml.draft (GitHub Actions
 # ignores .draft files) and was deliberately renamed live by a human after
 # review, per Automation/core/GITHUB_WORKFLOWS_DESIGN.md's "do not create a
 # real .yml file without a human reviewing it first" rule — see this
@@ -33,7 +33,7 @@ name: Post-deploy editorial refresh
 
 on:
   workflow_run:
-    workflows: ["Publish note to WordPress", "Publish long post to WordPress"]
+    workflows: ["PUB.NOTE", "PUB.LPOST"]
     types: [completed]
   workflow_dispatch:
     inputs:

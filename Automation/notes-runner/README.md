@@ -38,7 +38,7 @@ Automation/core/src/validate-bundle-notes.mjs      ← Node, parses the reply
 pending-notes/<slug>.json  →  git commit + push
         │
         ▼
-.github/workflows/publish-note.yml  (unchanged — picks this up
+.github/workflows/pub-note.yml  (unchanged — picks this up
                                       exactly like a manual save)
 ```
 

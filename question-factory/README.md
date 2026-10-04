@@ -14,12 +14,12 @@ A single-page tool for generating verified, bilingual exam MCQs (CTET / KVS / DS
 
 ## Auto-import into WordPress (owner setup, one time)
 
-Once a CSV lands in `pending-questions/`, the `.github/workflows/publish-questions.yml` workflow (already in this repo) picks it up automatically:
+Once a CSV lands in `pending-questions/`, the `.github/workflows/pub-quiz.yml` workflow (already in this repo) picks it up automatically:
 
 ```
 Auto-save to GitHub (above) → pending-questions/<name>.csv committed to main
                              ↓
-GitHub Actions: publish-questions.yml fires on the push
+GitHub Actions: pub-quiz.yml fires on the push
                              ↓
 POSTs the CSV to https://yoursite.com/wp-json/quiz/v1/import
   (authenticated with a WordPress Application Password + a shared secret key,

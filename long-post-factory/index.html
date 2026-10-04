@@ -1880,7 +1880,7 @@ function renderLongPostMarkdown(md, imageAltText){
   // or embed an image itself ("the pipeline handles it"), but nothing was
   // actually doing that insertion, so an uploaded featured image never
   // appeared inline in the body at all, only as WP's post-thumbnail meta.
-  // This placeholder URL is the exact string publish-long-post.yml already
+  // This placeholder URL is the exact string pub-lpost.yml already
   // knows to swap for the real uploaded media URL at publish time.
   const introImgHtml = `<img src="https://via.placeholder.com/700x350?text=Diagram" alt="${escBlockTitle((imageAltText||'').trim())} — concept overview" style="width:100%;height:auto;border-radius:12px;margin:14px 0;box-sizing:border-box;max-width:100%;">\n`;
 
@@ -2323,7 +2323,7 @@ function buildBundle(){
     seo: state.seo, bodyHtml: state.bodyHtml, publisherNotes: state.publisherNotes,
     createdAt: new Date().toISOString()
   };
-  // Feeds Automation/content-memory/ — see publish-long-post.yml, which writes
+  // Feeds Automation/content-memory/ — see pub-lpost.yml, which writes
   // this out as a standalone record after a successful WordPress publish.
   if(state.contentMemory) bundle.contentMemory = state.contentMemory;
   return bundle;
