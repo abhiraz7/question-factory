@@ -1,248 +1,125 @@
 {
-  "topic": "Piaget cognitive development stages",
-  "subject": "CDP",
-  "exam": "CTET Paper I",
-  "topicState": {
-    "topic": "Piaget cognitive development stages",
-    "subject": "CDP",
-    "exam": "CTET Paper I",
-    "coverage": {
-      "items": [],
-      "gaps": [],
-      "averageCoverage": 0,
-      "dataAvailable": false
+  "topic": null,
+  "subject": "EVS",
+  "exam": "BPSC TRE",
+  "recommendation": {
+    "winner": {
+      "id": "BPSC TRE::EVS",
+      "exam": "BPSC TRE",
+      "subject": "EVS",
+      "exploitScore": 0.5,
+      "timesUsed": 1
     },
-    "evidence": {
-      "queryText": "Piaget cognitive development stages CDP",
-      "corpusAvailable": true,
-      "hits": [],
-      "rejectedCount": 0,
-      "rejectionReasons": [],
-      "provenance": [],
-      "sourceConfidence": 0
-    },
-    "learner_signals": {
-      "dataAvailable": true,
-      "queries": [
-        {
-          "query": "ctet special education",
-          "clicks": 0,
-          "impressions": 6,
-          "ctr": 0,
-          "position": 9.2,
-          "overlap": 1
-        },
-        {
-          "query": "inclusive education ctet notes",
-          "clicks": 0,
-          "impressions": 6,
-          "ctr": 0,
-          "position": 7,
-          "overlap": 1
-        }
-      ],
-      "weakCoverage": false,
-      "dateRange": {
-        "startDate": "2026-09-03",
-        "endDate": "2026-10-01"
+    "ranked": [
+      {
+        "id": "BPSC TRE::EVS",
+        "exploitScore": 0.5,
+        "timesUsed": 1,
+        "explorationBonus": 1.451784451157061,
+        "totalScore": 1.951784451157061
       },
-      "confidence": 0.02,
-      "note": "2 matching queries found for this topic in the 2026-09-03 to 2026-10-01 window."
-    },
-    "difficulty": {
-      "dataAvailable": false,
-      "note": "No PYQ/difficulty dataset is wired into this engine yet."
-    },
-    "misconceptions": {
-      "underused": [],
-      "historicalFillRate": {
-        "mean": 0.2,
-        "observations": 3
+      {
+        "id": "CTET Paper I / CTET Paper II::Geography",
+        "exploitScore": 0.5,
+        "timesUsed": 1,
+        "explorationBonus": 1.451784451157061,
+        "totalScore": 1.951784451157061
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II::Hindi",
+        "exploitScore": 0.5,
+        "timesUsed": 1,
+        "explorationBonus": 1.451784451157061,
+        "totalScore": 1.951784451157061
+      },
+      {
+        "id": "CTET Paper I::English",
+        "exploitScore": 0.5,
+        "timesUsed": 1,
+        "explorationBonus": 1.451784451157061,
+        "totalScore": 1.951784451157061
+      },
+      {
+        "id": "BPSC TRE::Auto-detect",
+        "exploitScore": 0.5,
+        "timesUsed": 2,
+        "explorationBonus": 1.1853770406137756,
+        "totalScore": 1.6853770406137756
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II / UPTET::Maths",
+        "exploitScore": 0.5,
+        "timesUsed": 2,
+        "explorationBonus": 1.1853770406137756,
+        "totalScore": 1.6853770406137756
+      },
+      {
+        "id": "CTET Paper I::Auto-detect",
+        "exploitScore": 0.5,
+        "timesUsed": 2,
+        "explorationBonus": 1.1853770406137756,
+        "totalScore": 1.6853770406137756
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II::CDP",
+        "exploitScore": 0.5,
+        "timesUsed": 3,
+        "explorationBonus": 1.026566630234348,
+        "totalScore": 1.526566630234348
+      },
+      {
+        "id": "CTET Paper I::CDP",
+        "exploitScore": 0.5,
+        "timesUsed": 3,
+        "explorationBonus": 1.026566630234348,
+        "totalScore": 1.526566630234348
+      },
+      {
+        "id": "BPSC TRE::Hindi",
+        "exploitScore": 0.5,
+        "timesUsed": 5,
+        "explorationBonus": 0.8381881436808423,
+        "totalScore": 1.3381881436808423
+      },
+      {
+        "id": "DSSSB::History",
+        "exploitScore": 0.5,
+        "timesUsed": 5,
+        "explorationBonus": 0.8381881436808423,
+        "totalScore": 1.3381881436808423
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II::EVS",
+        "exploitScore": 0.5,
+        "timesUsed": 7,
+        "explorationBonus": 0.7258922255785305,
+        "totalScore": 1.2258922255785305
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II::Maths",
+        "exploitScore": 0.5,
+        "timesUsed": 8,
+        "explorationBonus": 0.6843777534895653,
+        "totalScore": 1.1843777534895654
+      },
+      {
+        "id": "CTET Paper I / CTET Paper II::Auto-detect",
+        "exploitScore": 0.5,
+        "timesUsed": 9,
+        "explorationBonus": 0.6492577442928823,
+        "totalScore": 1.1492577442928824
+      },
+      {
+        "id": "DSSSB::Auto-detect",
+        "exploitScore": 0.5,
+        "timesUsed": 15,
+        "explorationBonus": 0.513283315117174,
+        "totalScore": 1.013283315117174
       }
-    },
-    "recent_structures": {
-      "recentShapeDistribution": {
-        "importance-weightage": 1,
-        "core-concepts": 1,
-        "pedagogy-ncf-nep": 1,
-        "deep-theory-flowcharts": 1,
-        "comparison-tables": 1,
-        "mnemonics-memory-architecture": 1,
-        "conclusion-roadmap": 1,
-        "faq-assessment-evaluation": 1,
-        "section-1-importance": 1,
-        "section-2-core-concepts": 1,
-        "section-3-pedagogy": 1,
-        "section-4-current-updates": 1,
-        "section-5-deep-theory": 1,
-        "section-6-comparison": 1,
-        "section-7-mnemonics": 1,
-        "section-8-conclusion": 1,
-        "faq-cwsn": 1
-      },
-      "structuralDivergenceFromHistory": 1,
-      "structuralRepetitiveness": -2.220446049250313e-16,
-      "sectionCountEwma": 4.29,
-      "sampleSize": 3
-    },
-    "similarity": {
-      "dataAvailable": false,
-      "note": "similarity-check.mjs compares published HTML bodies; nothing exists pre-publish for this topic yet. See Automation/content-memory/README.md."
-    },
-    "confidence": {
-      "editorialSignature": 0.1,
-      "evidence": 0,
-      "sampleSize": 0.3,
-      "overall": 0.13
-    },
-    "fillPosteriors": {
-      "concepts_taught": {
-        "mean": 0.8,
-        "observations": 3
-      },
-      "examples_used": {
-        "mean": 0.2,
-        "observations": 3
-      },
-      "misconceptions_used": {
-        "mean": 0.2,
-        "observations": 3
-      },
-      "question_types": {
-        "mean": 0.2,
-        "observations": 3
-      }
-    },
-    "editorialSignature": {
-      "avoidConcepts": [
-        "यह Topic कितना Important है? — Exam Weightage",
-        "Core Concepts — आकलन और मूल्यांकन",
-        "Pedagogy & NCF/NEP Angle — Exam में क्या पूछा जाता है?",
-        "Deep Theory — Types of Assessment & Models",
-        "Comparison Tables — Confusing Pairs & Classifications"
-      ],
-      "avoidExamples": [],
-      "underusedMisconceptions": [],
-      "coverageGaps": [],
-      "recommendedStructures": [],
-      "confidence": 0.1
-    },
-    "last_updated": "2026-10-04T12:42:06.341Z"
+    ]
   },
-  "evidence": {
-    "queryText": "Piaget cognitive development stages CDP",
-    "corpusAvailable": true,
-    "hits": [],
-    "rejectedCount": 0,
-    "rejectionReasons": [],
-    "provenance": [],
-    "sourceConfidence": 0
-  },
-  "statistics": {
-    "fillPosteriors": {
-      "concepts_taught": {
-        "mean": 0.8,
-        "observations": 3
-      },
-      "examples_used": {
-        "mean": 0.2,
-        "observations": 3
-      },
-      "misconceptions_used": {
-        "mean": 0.2,
-        "observations": 3
-      },
-      "question_types": {
-        "mean": 0.2,
-        "observations": 3
-      }
-    },
-    "recent_structures": {
-      "recentShapeDistribution": {
-        "importance-weightage": 1,
-        "core-concepts": 1,
-        "pedagogy-ncf-nep": 1,
-        "deep-theory-flowcharts": 1,
-        "comparison-tables": 1,
-        "mnemonics-memory-architecture": 1,
-        "conclusion-roadmap": 1,
-        "faq-assessment-evaluation": 1,
-        "section-1-importance": 1,
-        "section-2-core-concepts": 1,
-        "section-3-pedagogy": 1,
-        "section-4-current-updates": 1,
-        "section-5-deep-theory": 1,
-        "section-6-comparison": 1,
-        "section-7-mnemonics": 1,
-        "section-8-conclusion": 1,
-        "faq-cwsn": 1
-      },
-      "structuralDivergenceFromHistory": 1,
-      "structuralRepetitiveness": -2.220446049250313e-16,
-      "sectionCountEwma": 4.29,
-      "sampleSize": 3
-    },
-    "confidence": {
-      "editorialSignature": 0.1,
-      "evidence": 0,
-      "sampleSize": 0.3,
-      "overall": 0.13
-    }
-  },
-  "editorialDecision": {
-    "opening": "no overriding misconception/coverage-gap signal — foundational default",
-    "concept_order": "follows from opening (concept)",
-    "example_density": "Beta-Bernoulli posterior on examples_used fill rate (mean=0.2, observations=3)",
-    "comparison_need": "PROXY: 0.6×structural repetitiveness + 0.4×evidence source diversity",
-    "table_need": "PROXY: distinct evidence sources / 5 (provenance count=0)",
-    "classroom_examples": "example_density × subject ceiling (5, pedagogy-subject=true)",
-    "misconception_depth": "Beta-Bernoulli posterior on misconceptions_used fill rate, +0.2 if a specific underused misconception was named (named=false)",
-    "revision_density": "sampleSize confidence (0.3) × average coverage (0)",
-    "question_integration": "Beta-Bernoulli posterior on question_types fill rate (observations=3)",
-    "analogy_use": "PROXY: damped (×0.8) average of example_density and misconception_depth — no direct analogy signal exists in content-memory",
-    "section_count": "EWMA of historical article_shape length (4.29)"
-  },
-  "editorialGenome": {
-    "opening": "concept",
-    "concept_order": "definition_to_application",
-    "example_density": 0.2,
-    "comparison_need": 0,
-    "table_need": 0,
-    "classroom_examples": 1,
-    "misconception_depth": 0.2,
-    "revision_density": 0,
-    "question_integration": 0.2,
-    "analogy_use": 0.16,
-    "section_count": 4
-  },
-  "editorialBrief": {
-    "teach": [],
-    "emphasize": [],
-    "clarify": [],
-    "useEvidence": [],
-    "avoidRepeating": [
-      "यह Topic कितना Important है? — Exam Weightage",
-      "Core Concepts — आकलन और मूल्यांकन",
-      "Pedagogy & NCF/NEP Angle — Exam में क्या पूछा जाता है?",
-      "Deep Theory — Types of Assessment & Models",
-      "Comparison Tables — Confusing Pairs & Classifications"
-    ],
-    "pedagogicalShape": {
-      "opening": "concept",
-      "concept_order": "definition_to_application",
-      "example_density": 0.2,
-      "comparison_need": 0,
-      "table_need": 0,
-      "classroom_examples": 1,
-      "misconception_depth": 0.2,
-      "revision_density": 0,
-      "question_integration": 0.2,
-      "analogy_use": 0.16,
-      "section_count": 4
-    },
-    "confidence": 0.13
-  },
-  "confidence": 0.13,
-  "generatedAt": "2026-10-04T12:42:06.341Z",
-  "mode": "full"
+  "confidence": 0,
+  "generatedAt": "2026-10-05T09:39:34.536Z",
+  "mode": "recommend-only",
+  "humanActionNeeded": "No topic backlog data source exists in this repo yet (checked Automation/wp-structure/*.tsv — that is WordPress course/subject taxonomy, not a content backlog). Re-run with --topic \"...\" --subject \"...\" --exam \"...\" once a specific next topic is chosen, or wire a real topic backlog into this script. See this session's EDITORIAL_INTELLIGENCE_PROGRESS_REPORT.md."
 }
