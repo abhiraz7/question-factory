@@ -235,7 +235,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <fieldset style="margin-top:14px">
     <legend>🔍 1a · Review first — find what's actually wrong</legend>
-    <p class="hint" style="margin-top:0">Instead of rewriting the whole article, first ask the AI to audit it: fabricated stats, non-official sources, generic SEO, wrong teaching level, outdated info, thin sections. You approve which flags are real before anything gets rewritten.</p>
+    <p class="hint" style="margin-top:0">Instead of rewriting the whole article, first ask the AI to audit it against this site's full documented failure-pattern list — fabricated stats, unverifiable sources, generic SEO, casual AI-chatbot voice, exam-trap-first framing, orphan citations, missing visuals/internal links, unnatural Hindi, template-sameness, and more. You approve which flags are real before anything gets rewritten.</p>
     <button class="btn" onclick="tryRun(copyReviewPrompt,this)">🔍 Build REVIEW prompt</button>
     <div class="msg" id="reviewPromptMsg"></div>
     <textarea id="reviewPromptOut" style="display:none"></textarea>
@@ -244,7 +244,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     </div></details>
 
     <label style="margin-top:12px">Paste the AI's review reply here</label>
-    <textarea id="reviewRawIn" style="min-height:160px" placeholder="Paste the AI's <<<REVIEW_JSON>>> reply here…"></textarea>
+    <textarea id="reviewRawIn" style="min-height:40vh" placeholder="Paste the AI's <<<REVIEW_JSON>>> reply here…"></textarea>
     <button class="btn ghost" onclick="tryRun(parseReviewReply,this)">✅ Parse review</button>
     <div class="msg" id="reviewParseMsg"></div>
     <div id="reviewFlagsWrap" style="margin-top:10px"></div>
@@ -276,10 +276,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 <section class="step" id="step1">
   <h2>2 · Paste the AI's reply</h2>
   <p class="hint">Paste the whole reply from DeepSeek/ChatGPT/Claude. The parser reads the machine-readable markers first, and falls back to reading the visible SEO panel + HTML if a model ignored them — nothing is ever a dead end. This prompt asks the AI to teach the topic as thoroughly as it genuinely needs, which can run long, so on a phone the AI app itself may split its answer across several messages — that's expected, not an error. Paste each chunk here as it arrives, tick "This is a continuation," and tap Parse again after every chunk; the last chunk should end with the <code>&lt;&lt;&lt;END_PUBLISHER_NOTES&gt;&gt;&gt;</code> marker.</p>
-  <textarea id="rawIn" style="min-height:220px" placeholder="Paste the full AI reply here…"></textarea>
-  <label class="btn ghost" style="display:inline-block;cursor:pointer;margin-top:8px">📁 Upload a file instead
-    <input type="file" id="rawInFile" accept=".md,.markdown,.txt,.html,.htm" style="display:none" onchange="loadRawInFromFile(this)">
+  <textarea id="rawIn" style="min-height:60vh" placeholder="Paste the full AI reply here…"></textarea>
+  <label class="btn ghost" style="display:inline-block;cursor:pointer;margin-top:8px">📁 Upload a file instead (.html/.txt/.json/.zip)
+    <input type="file" id="rawInFile" accept=".md,.markdown,.txt,.html,.htm,.json,.zip" style="display:none" onchange="loadRawInFromFile(this)">
   </label>
+  <p class="hint" style="margin-top:4px">A .zip works too — e.g. the AI packaged its reply as separate SEO/body/publisher-notes files, or several numbered part files.</p>
   <label style="font-weight:500"><input type="checkbox" id="appendMode" style="width:auto;margin-right:6px">This is a continuation — add it to what I already pasted (AI stopped midway)</label>
   <button class="btn" onclick="tryRun(parseAndGo,this)">🔎 Parse</button>
   <button class="btn ghost" onclick="tryRun(copyContinue,this)">📋 Copy "continue" prompt (AI stopped midway)</button>
@@ -429,6 +430,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      Shared with notes-factory, question-factory and reporting/index.html so
      there is exactly one place to add a new exam/CSV. -->
 <script src="../shared/topic-bank-sources.js"></script>
+<!-- JSZip (vendored, unmodified, MIT/GPLv3 dual-licensed — stuartk.com/jszip)
+     — window.JSZip. Used only by loadRawInFromFile() below to extract a
+     .zip upload client-side; never sent anywhere, same no-backend model as
+     every other upload in this tool. -->
+<script src="../shared/jszip.min.js"></script>
 <script>
 "use strict";
 
@@ -1266,13 +1272,21 @@ ${referenceSourcesBlock()}
 CHECK FOR EVERY ONE OF THESE (this site's own known, previously-shipped failure patterns — check all of them, not just the obvious ones):
 1. Fabricated/unsourced numbers — any exam-frequency stat, weightage %, or "guaranteed" claim with no real, nameable source behind it.
 2. A "VERIFIED PYQ" that isn't actually sourced to the exam body's own official material — a coaching-site (Testbook/Adda247/PW/EduRev/FreeJobAlert/etc.) repost does NOT count as verified, even if the question is real.
-3. Any citation/reference pointing to a non-whitelisted domain — only the exam body's own official domain, .gov.in/.nic.in pages, or en.wikipedia.org count. Flag every other source.
+3. Any source that isn't real and checkable — a plausible-sounding but unverifiable URL, `href="#"`, or a vague paraphrase like "official sources" standing in for a real citation. Realness and relevance are the test, not a fixed domain list — official/primary sources are still preferred when there's a real choice.
 4. A generic, template-shaped SEO title/keyphrase that could apply to any topic on this exam instead of naming the actual specific concepts.
-5. Thin or shallow sections that don't actually teach the concept.
+5. Thin or shallow sections that don't actually teach the concept, or AI-cliché filler (delve, tapestry, crucial/pivotal role, holistic, seamless, game-changer, unlock) standing in for real content.
 6. Content pitched at the wrong TEACHING LEVEL (see above).
 7. Outdated information — an exam-pattern detail, policy reference, or fact that may have changed since publication.
 8. A placeholder image URL (via.placeholder.com) or unresolved [bracket] template text.
 9. Anything that's simply factually wrong.
+10. Casual AI-chatbot voice instead of textbook register — coaching-class filler (तो/अच्छा/चलिए/देखिए), chatty direct address outside a card, or a leftover "ये free notes हैं"/paywall-disclaimer line that has no reason to be there.
+11. Exam-trap-first framing — opens by teaching how to beat the exam instead of teaching the concept itself; the exam angle should be one aside, never the note's organizing voice.
+12. Breaking the fourth wall — "as an AI," "I don't have live browsing," or any other sentence narrating its own restrictions instead of just writing the content.
+13. Orphan citations/references — a `<sup>` with no matching Reference, a Reference nothing in the body actually cites, or a generic reference block (e.g. NCF/NEP/RTE) kept regardless of whether this specific topic ever drew from it.
+14. No real visual for a concept that clearly has a process/hierarchy/cycle/cause-effect relationship worth drawing, or a visual that's purely decorative and teaches nothing.
+15. No real internal links to other notes on this site, or any internal/external link that looks fabricated rather than found.
+16. Unnatural/calque Hindi — a sentence that reads like English translated word-for-word rather than something a Hindi-medium teacher would actually say (e.g. a Schedule "देती है" instead of "होती है").
+17. Template-sameness — the same section skeleton or opening line as this site's other notes on this exam, not shaped to this specific topic.
 Also cross-check every factual claim in the article against the reference sources above (if any were supplied) — flag anything unsupported or contradicted.
 
 ARTICLE UNDER REVIEW:
@@ -1288,7 +1302,7 @@ OUTPUT — exactly this, nothing else, no commentary before or after:
 {
   "overallAssessment": "one honest sentence on the article's overall state",
   "flags": [
-    {"id": "F1", "location": "e.g. Section 2 intro, or FAQ Q3", "issue": "one of: fabricated-stat, non-whitelisted-source, generic-seo, thin-content, wrong-level, outdated, placeholder-artifact, factual-error, other", "detail": "quote or precisely describe the exact problem", "suggestedFix": "what should change"}
+    {"id": "F1", "location": "e.g. Section 2 intro, or FAQ Q3", "issue": "one of: fabricated-stat, unverifiable-source, generic-seo, thin-content, wrong-level, outdated, placeholder-artifact, factual-error, casual-ai-voice, exam-trap-framing, fourth-wall-break, orphan-citation, missing-visual, missing-internal-link, unnatural-hindi, template-sameness, other", "detail": "quote or precisely describe the exact problem", "suggestedFix": "what should change"}
   ],
   "genuinelyGood": ["short bullet list of things that are accurate/well-written and must be preserved exactly as-is"]
 }
@@ -2091,16 +2105,79 @@ function copyContinue(btn){
 - When the current block is complete, close it with its END marker and continue with the remaining blocks per the original PIPELINE OUTPUT CONTRACT (code fences mandatory).`;
   doCopy(t, btn, msg('parseMsg'), '"Continue" prompt copied — paste it in the SAME chat, then paste the new reply here with the continuation checkbox ticked.');
 }
+// Same zip/json ingestion as notes-factory/index.html (keep both in sync if
+// this logic changes) — lets an AI reply packaged as a zip of loose files
+// (SEO json + body html + publisher notes + memory json, or a single
+// numbered-parts file) load into the paste box exactly like a plain .txt.
+const SENTINEL_KEYS = ['<<<SEO_JSON>>>','<<<NOTES_BODY_HTML>>>','<<<PUBLISHER_NOTES>>>','<<<CONTENT_MEMORY_JSON>>>'];
+function alreadySentinelWrapped(text){ return SENTINEL_KEYS.some(k => text.includes(k)); }
+function classifyLooseFile(filename, text){
+  const trimmed = text.trim();
+  if(trimmed.startsWith('{')){
+    try{
+      const obj = JSON.parse(trimmed);
+      if(obj && typeof obj === 'object'){
+        if('focusKeyword' in obj || 'seoTitle' in obj) return 'seo';
+        if('concepts_taught' in obj || 'flavour' in obj) return 'memory';
+      }
+    }catch(e){ /* not valid JSON — fall through to filename check below */ }
+  }
+  const name = (filename||'').toLowerCase();
+  if(name.includes('publisher')) return 'publisher';
+  if(name.includes('memory')) return 'memory';
+  if(name.includes('seo')) return 'seo';
+  return 'body-part';
+}
+function wrapSentinel(kind, content){
+  const t = content.trim();
+  if(kind==='seo') return `<<<SEO_JSON>>>\n\`\`\`json\n${t}\n\`\`\`\n<<<END_SEO_JSON>>>\n\n`;
+  if(kind==='memory') return `<<<CONTENT_MEMORY_JSON>>>\n\`\`\`json\n${t}\n\`\`\`\n<<<END_CONTENT_MEMORY_JSON>>>\n\n`;
+  if(kind==='publisher') return `<<<PUBLISHER_NOTES>>>\n\`\`\`\n${t}\n\`\`\`\n<<<END_PUBLISHER_NOTES>>>\n\n`;
+  return t + '\n\n';
+}
+function assembleRawFromFiles(entries){
+  if(entries.length === 1 && alreadySentinelWrapped(entries[0].text)) return entries[0].text;
+  const sorted = [...entries].sort((a,b) => a.name.localeCompare(b.name));
+  const passthrough = [];
+  const byKind = { seo:[], publisher:[], memory:[], 'body-part':[] };
+  for(const {name, text} of sorted){
+    if(alreadySentinelWrapped(text)){ passthrough.push(text); continue; }
+    byKind[classifyLooseFile(name, text)].push(text);
+  }
+  let out = passthrough.join('\n\n');
+  if(byKind.seo.length) out += '\n\n' + wrapSentinel('seo', byKind.seo[0]);
+  if(byKind['body-part'].length){
+    out += `\n\n<<<NOTES_BODY_HTML>>>\n\`\`\`html\n${byKind['body-part'].map(t=>t.trim()).join('\n\n')}\n\`\`\`\n<<<END_NOTES_BODY_HTML>>>\n\n`;
+  }
+  if(byKind.publisher.length) out += '\n\n' + wrapSentinel('publisher', byKind.publisher[0]);
+  if(byKind.memory.length) out += '\n\n' + wrapSentinel('memory', byKind.memory[0]);
+  return out.trim();
+}
 function loadRawInFromFile(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+  const finish = (entries) => {
+    let assembled;
+    try{ assembled = assembleRawFromFiles(entries); }
+    catch(e){ show(msg('parseMsg'), 'bad', `Could not process "${file.name}": ${e.message}`); return; }
     const ta = document.getElementById('rawIn');
     const append = document.getElementById('appendMode').checked && ta.value.trim();
-    ta.value = append ? (ta.value + '\n' + reader.result) : reader.result;
-    show(msg('parseMsg'), 'ok', `Loaded "${file.name}" (${(file.size/1024).toFixed(1)} KB) into the paste box — review it, then tap Parse.`);
+    ta.value = append ? (ta.value + '\n' + assembled) : assembled;
+    show(msg('parseMsg'), 'ok', `Loaded "${file.name}" (${(file.size/1024).toFixed(1)} KB${entries.length>1?`, ${entries.length} files`:''}) into the paste box — review it, then tap Parse.`);
   };
+  if(/\.zip$/i.test(file.name)){
+    if(!window.JSZip){ show(msg('parseMsg'), 'bad', 'ZIP support failed to load (shared/jszip.min.js) — try pasting the content instead.'); return; }
+    JSZip.loadAsync(file).then(zip => {
+      const textFiles = Object.values(zip.files).filter(f => !f.dir && /\.(html?|txt|md|json)$/i.test(f.name));
+      if(!textFiles.length) throw new Error(`no .html/.txt/.md/.json files found inside "${file.name}"`);
+      return Promise.all(textFiles.map(f => f.async('string').then(text => ({ name:f.name, text }))));
+    }).then(finish)
+      .catch(e => show(msg('parseMsg'), 'bad', `Could not read "${file.name}" as a zip: ${e.message}`));
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => finish([{ name:file.name, text:String(reader.result||'') }]);
   reader.onerror = () => show(msg('parseMsg'), 'bad', `Could not read "${file.name}" — try pasting the content instead.`);
   reader.readAsText(file, 'utf-8');
   input.value = '';
@@ -3287,7 +3364,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 renderPublishedList();
-loadPublishedList();
+// Deep-link handoff from notes-factory's "may already exist" warning:
+// ?slug=<x> auto-selects that published note once the list loads, so the
+// person doesn't have to re-search for what notes-factory already found.
+loadPublishedList().then(()=>{
+  const wantSlug = new URLSearchParams(location.search).get('slug');
+  if(!wantSlug || !publishedItems) return;
+  const idx = publishedItems.findIndex(it => it.slug === wantSlug);
+  if(idx === -1){
+    show(msg('pubListMsg'),'warn',`Came from a duplicate-topic check for "${wantSlug}", but that slug isn't in the published list here (it may be a long-post, or not yet synced) — search for it manually below.`);
+    return;
+  }
+  selectPublishedItem(idx);
+});
 restoreDraftIfAny();
 render();
 </script>
