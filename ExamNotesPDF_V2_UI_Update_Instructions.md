@@ -1,4 +1,4 @@
-# ExamNotesPDF — Practical V2 UI/Workflow Update Instructions
+# Practical V2 UI/Workflow Update Instructions
 
 > **Status (2026-09-11): appears done.** `update-factory/index.html` exists
 > (3,000+ lines) and implements the core asks: `state.isUpdate`/`oldSeo`/

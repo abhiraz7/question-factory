@@ -1,8 +1,8 @@
 # Content Pipeline Audit
 
-**Why AdSense flagged examnotespdf.in for low-value content**
+**Why AdSense flagged the site for low-value content**
 
-- Site: examnotespdf.in
+- Site: this site
 - AdSense status: *Needs attention — Low value content*
 - Scope: `notes-factory` pipeline (37/37 published notes reviewed) and `long-post-factory` pipeline (1/1 published long post reviewed)
 - Method: direct inspection of every file in `published-notes/`, `published-long-posts/`, both publish workflows, and `automation/`, cross-referenced against Google's own policy language (sources in §2)
@@ -27,7 +27,7 @@
 
 ## 1. Problem statement
 
-AdSense marked examnotespdf.in **"Needs attention — Low value content"** and is withholding ad serving pending a fix. This is not a ranking or traffic problem to write around — it's an eligibility gate, and the site's own content pipeline is the direct cause.
+AdSense marked the site **"Needs attention — Low value content"** and is withholding ad serving pending a fix. This is not a ranking or traffic problem to write around — it's an eligibility gate, and the site's own content pipeline is the direct cause.
 
 Both `notes-factory` and (to a lesser extent) `long-post-factory` generate pages through an unsupervised flow — AI prompt → JSON bundle → GitHub Actions → WordPress draft — with **no automated content-quality gate between generation and publish**. That gap has let at least one page ship as raw, unfilled prompt-template text, let a single visual card template repeat across the majority of notes, and let 15 notes go live carrying a literal broken placeholder image — the single clearest "site under construction" signal a manual reviewer can find.
 
@@ -37,7 +37,7 @@ Every finding in §3 is tied to a specific policy clause and a specific file, by
 
 Before the findings, it's worth being precise about what this system actually is — because the fix in §6 has to slot into it without breaking what already works.
 
-**What we are:** examnotespdf.in is a WordPress site publishing exam-prep content for Indian teaching-eligibility exams (CTET, TET, TGT/PGT, KVS/NVS, BPSC TRE, etc.) in two content types on the same underlying pattern:
+**What we are:** this is a WordPress site publishing exam-prep content for Indian teaching-eligibility exams (CTET, TET, TGT/PGT, KVS/NVS, BPSC TRE, etc.) in two content types on the same underlying pattern:
 
 - **Notes** (`free_notes` post type) — short-to-medium topic notes (Algebra, EVS, Pedagogy, etc.), authored in `notes-factory/`
 - **Long Posts** — longer, exam-overview articles (e.g. "CTET Exam Date 2026"), authored in `long-post-factory/`

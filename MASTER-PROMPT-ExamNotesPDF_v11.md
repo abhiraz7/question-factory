@@ -1,4 +1,4 @@
-# MASTER PROMPT — ExamNotesPDF Premium Notes Engine (v11 — Rank Math 90+ Locked)
+# MASTER PROMPT — Premium Notes Engine (v11 — Rank Math 90+ Locked)
 
 > **What changed vs v10.1:** Two real articles were graded — one scored 82, one scored 52 — from the *same* prompt. Post-mortem found the low scorer (a) used the exact focus keyphrase in only ONE H2, (b) had roughly half the exact-keyphrase count of the high scorer, (c) had zero inline `<sup>` citations, and (d) printed a checks table full of "YES — met requirement" **without ever counting anything** — i.e., the self-audit was fabricated from memory. v11 makes every one of those failure modes structurally impossible: a Rank Math test-by-test gate, mandatory literal counting before the checks table, and a ban on reconstructing scaffolding from memory.
 

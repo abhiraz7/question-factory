@@ -1,6 +1,6 @@
 # Notes Factory
 
-Generates premium exam notes from the `MASTER-PROMPT-ExamNotesPDF v6.md` master prompt using any **free** chat AI (DeepSeek recommended — the prompt is large), then publishes them to WordPress as drafts. Saving to GitHub is one-click automatic — the person using the app day-to-day (e.g. a client) only ever needs a short **app password** you give them, never a GitHub token. You (the owner) set the real GitHub token up once, encrypted, using the separate `admin-encrypt-token.html` tool.
+Generates premium exam notes from the master prompt using any **free** chat AI (DeepSeek recommended — the prompt is large), then publishes them to WordPress as drafts. Saving to GitHub is one-click automatic — the person using the app day-to-day (e.g. a client) only ever needs a short **app password** you give them, never a GitHub token. You (the owner) set the real GitHub token up once, encrypted, using the separate `admin-encrypt-token.html` tool.
 
 **Live app:** `https://bugignore.github.io/question-factory/notes-factory/`
 

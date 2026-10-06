@@ -1,4 +1,4 @@
-# MASTER PROMPT — ExamNotesPDF Premium Notes Engine (v12 — Rank Math 90+ Locked, Mobile-Paste Safe)
+# MASTER PROMPT — Premium Notes Engine (v12 — Rank Math 90+ Locked, Mobile-Paste Safe)
 
 > **v11→v12 change:** v11 (32.7K chars) kept truncating on mobile paste (Gboard clipboard). A live v11 run also shipped a 2,402-word article with **0% keyphrase density and 0 headings containing the keyphrase** — i.e. the model treated the SEO panel as decorative and never actually wove the keyphrase into the body. v12 cuts ~45% of prompt bytes (removed repeated explanations, kept every hard rule) AND adds one new non-negotiable: **the keyphrase must be typed into the body text itself, verbatim, dozens of times — this is not optional styling, it is the #1 scored test.**
 

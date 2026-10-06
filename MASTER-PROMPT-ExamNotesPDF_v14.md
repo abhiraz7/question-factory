@@ -1,4 +1,4 @@
-# MASTER PROMPT — ExamNotesPDF Notes Engine (v14 — Constitution, not the full brain)
+# MASTER PROMPT — Notes Engine (v14 — Constitution, not the full brain)
 
 Small on purpose — topic thinking lives in EDITORIAL FLAVOUR/SIGNATURE below. Format
 (ids, links, citations, title/meta length) is checked mechanically after you write —

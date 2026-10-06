@@ -1,4 +1,4 @@
-# MASTER PROMPT — ExamNotesPDF Notes Engine (v13 — Topic-Adaptive Brain, V12 Hand-Written Design)
+# MASTER PROMPT — Notes Engine (v13 — Topic-Adaptive Brain, V12 Hand-Written Design)
 ## INPUTS (Notes Factory fills these)
 - TOPIC, EXAM TYPE, SUBJECT — as given; ask once if missing, never guess.
 - TARGET_YEAR: **2026** — locked. Only year allowed in keyphrase/title/slug/meta/H1.

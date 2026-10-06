@@ -1,4 +1,4 @@
-# Project Knowledge Base — ExamNotesPDF Content Factory
+# Project Knowledge Base — Content Factory
 
 A deep-reference document covering every module in this repo: what it does,
 why it's built the way it is, and the engineering concepts it demonstrates.
@@ -27,7 +27,7 @@ engineering.
 ## 1. What this repo is
 
 A set of tools that generate exam-prep study content (in Hindi/English —
-"Hinglish") for a WordPress site (`examnotespdf.in`), aimed at Indian
+"Hinglish") for a WordPress site, aimed at Indian
 government-exam aspirants (CTET, BPSC TRE, DSSSB, UPTET, KVS, NVS, and
 similar teacher-recruitment exams). Three content pipelines exist, each a
 progressively more automated version of the same idea: **produce an article,

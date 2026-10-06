@@ -1,4 +1,4 @@
-# MASTER PROMPT — ExamNotesPDF Premium Notes Engine (v10.1 Mobile)
+# MASTER PROMPT — Premium Notes Engine (v10.1 Mobile)
 
 ## INPUT VARIABLES (the Notes Factory tool fills these — everything else adapts automatically)
 - TOPIC: [ __________ ] — any topic/sub-topic, any subject, exactly as typed (e.g. "Mughal Land Revenue System", "Piaget's Stages", "Trigonometry — Heights and Distances").
