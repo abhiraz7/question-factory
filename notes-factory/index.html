@@ -630,15 +630,28 @@ async function loadPublishedSlugs(){
 function topicWords(text){
   return window.BM25 ? window.BM25.tokenize(text) : String(text||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>2);
 }
+// Exam-name/pipeline boilerplate that shows up in almost every topic AND
+// almost every slug for a given exam (e.g. every BPSC TRE topic/slug
+// contains "bpsc"+"tre") — without this exclusion, two completely
+// unrelated topics under the same exam always share >=2 words and
+// findPublishedMatch() below flags every single one as a false-positive
+// duplicate of whichever one slug happens to be published for that exam.
+// Confirmed live: all 8 different BPSC TRE 4 English-grammar topics were
+// matching the one unrelated "bihar-gk-history-culture" note purely on
+// shared "bpsc"+"tre" tokens.
+const SLUG_MATCH_STOPWORDS = new Set(
+  topicWords(EXAM_TYPES.join(' ') + ' notes guide exam paper practice 2026')
+);
 // Best-matching slug for a topic string, or null if nothing overlaps enough
-// to be worth flagging. Requires >=2 shared words, not 1 — a single common
-// word (e.g. "ratio") would false-positive against half the slug list.
+// to be worth flagging. Requires >=2 shared MEANINGFUL words, not 1 — a
+// single common word (e.g. "ratio") would false-positive against half the
+// slug list, and exam-name words don't count at all (see stopwords above).
 function findPublishedMatch(topic, slugs){
-  const words = new Set(topicWords(topic));
+  const words = new Set(topicWords(topic).filter(w=>!SLUG_MATCH_STOPWORDS.has(w)));
   if(words.size < 2) return null;
   let best = null, bestScore = 1;
   for(const slug of slugs){
-    const slugWords = new Set(topicWords(slug.replace(/-/g,' ')));
+    const slugWords = new Set(topicWords(slug.replace(/-/g,' ')).filter(w=>!SLUG_MATCH_STOPWORDS.has(w)));
     let overlap = 0;
     for(const w of words) if(slugWords.has(w)) overlap++;
     if(overlap > bestScore){ bestScore = overlap; best = slug; }
@@ -659,7 +672,8 @@ function checkTopicAgainstPublished(){
     const match = findPublishedMatch(topic, slugs);
     el.className = match ? 'msg show warn' : '';
     el.innerHTML = match
-      ? `⚠ A note matching this topic may already exist: <code>${match}</code> — check before generating a duplicate.`
+      ? `⚠ A note matching this topic may already exist: <code>${match}</code> — check before generating a duplicate.
+         <a href="../update-factory/index.html?slug=${encodeURIComponent(match)}" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;font-weight:600">Update it instead →</a>`
       : '';
   }, 400);
 }
