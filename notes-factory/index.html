@@ -171,7 +171,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 <!-- STEP 1 -->
 <section class="step show" id="step0">
   <h2>✍️ 1 · Build &amp; copy the prompt</h2>
-  <p class="hint">Fills your exact TOPIC / EXAM TYPE / SUBJECT into the ExamNotesPDF master prompt (the file itself is never edited) and copies the whole thing — paste it into a new DeepSeek / ChatGPT / Claude chat.</p>
+  <p class="hint">Fills your exact TOPIC / EXAM TYPE / SUBJECT into the master prompt (the file itself is never edited) and copies the whole thing — paste it into a new DeepSeek / ChatGPT / Claude chat.</p>
 
   <fieldset>
     <legend>🔄 Updating an existing note instead?</legend>
@@ -261,10 +261,10 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 <!-- STEP 2 -->
 <section class="step" id="step1">
   <h2>🤖 2 · Paste the AI's reply</h2>
-  <p class="hint">Paste the whole reply from DeepSeek/ChatGPT/Claude. The parser reads the machine-readable markers first, and falls back to reading the visible SEO panel + HTML if a model ignored them — nothing is ever a dead end.</p>
+  <p class="hint">Paste the whole reply from DeepSeek/ChatGPT/Claude. The parser reads the machine-readable markers first, and falls back to reading the visible SEO panel + HTML if a model ignored them — nothing is ever a dead end. If the AI gave you a <code>.zip</code> instead (some split the reply into separate HTML/JSON/text files, or several numbered part files) — upload it as-is below, no need to unzip first.</p>
   <textarea id="rawIn" style="min-height:220px" placeholder="Paste the full AI reply here…"></textarea>
-  <label class="btn ghost" style="display:inline-block;cursor:pointer;margin-top:8px">📁 Upload a file instead
-    <input type="file" id="rawInFile" accept=".md,.markdown,.txt,.html,.htm" style="display:none" onchange="loadRawInFromFile(this)">
+  <label class="btn ghost" style="display:inline-block;cursor:pointer;margin-top:8px">📁 Upload a file instead (.html/.txt/.json/.zip)
+    <input type="file" id="rawInFile" accept=".md,.markdown,.txt,.html,.htm,.json,.zip" style="display:none" onchange="loadRawInFromFile(this)">
   </label>
   <label style="font-weight:500"><input type="checkbox" id="appendMode" style="width:auto;margin-right:6px">This is a continuation — add it to what I already pasted (AI stopped midway)</label>
   <button class="btn" onclick="tryRun(parseAndGo,this)">🔎 Parse</button>
@@ -433,6 +433,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      renderCopyParts() below fall back to their original word-count-based
      splitting if this fails to load. -->
 <script src="../shared/copy-with-limit.js"></script>
+<!-- JSZip (vendored, unmodified, MIT/GPLv3 dual-licensed — stuartk.com/jszip)
+     — window.JSZip. Used only by loadRawInFromFile() below to extract a
+     .zip upload client-side; never sent anywhere, same no-backend model as
+     every other upload in this tool. -->
+<script src="../shared/jszip.min.js"></script>
 <script>
 "use strict";
 
@@ -858,7 +863,7 @@ ${lines.join('\n')}`;
 }
 
 /* Real, currently-live internal link targets — fetched from this site's own
-   public WordPress REST API (examnotespdf.in/wp-json/wp/v2/free_notes), not
+   public WordPress REST API (/wp-json/wp/v2/free_notes), not
    invented by the AI. CORS-open, no auth needed (verified: WordPress core
    reflects any Origin on this endpoint). Scored against topic/subject with
    the same window.BM25.tokenize() word-overlap used for retrieval elsewhere
@@ -894,14 +899,14 @@ async function buildInternalLinksBlock(topic, subject, examType){
     return { title: excerptFor(title, 70), link: p.link, overlap };
   }).filter(p => p.link && p.title);
   scored.sort((a,b) => b.overlap - a.overlap);
-  const top = scored.slice(0, 7);
+  const top = scored.slice(0, 6);
   if(!top.length) return '';
 
   const lines = top.map(p => `- ${p.title}: ${p.link}`).join('\n');
   return `
 
 ## INTERNAL LINKS TO USE — real, currently-live URLs on this site
-Weave ${top.length >= 7 ? 'all of' : 'as many as fit naturally from'} these into the
+Weave ${top.length >= 6 ? 'all of' : 'as many as fit naturally from'} these into the
 body as contextual anchor text (not a bare list). Do NOT invent any other internal
 link or slug.
 ${lines}`;
@@ -1145,22 +1150,25 @@ function clearUpdateMode(){
 function outputContract(){
   return `
 
-=== PIPELINE OUTPUT CONTRACT (read this after finishing everything above — mandatory, additive only) ===
-Everything specified above still applies in full — every rule, every section, every format, every word-count target. This contract only adds wrapper markers around your final answer so an automated script can extract the pieces; it changes nothing about what you write, only how it is packaged at the very end.
+=== PIPELINE OUTPUT CONTRACT (read after finishing everything above — mandatory, additive only) ===
+Everything above still applies in full. This contract only wraps your answer in sentinel markers so a script can extract the pieces — it changes nothing about what you write, only how it's packaged at the end.
 
-=== DELIVERY METHOD — MANDATORY, CHECK THIS FIRST ===
-The person on the other end is very likely on a MOBILE PHONE, where copying a long chat reply is unreliable or blocked outright by the app. Because of this:
-- If your interface is able to create a downloadable file for the user (a "file" / "canvas" / code-interpreter-style output with a download link/button — ChatGPT and Claude apps both support this), you MUST deliver your entire final answer as ONE downloadable plain-text file, extension \`.txt\`, containing everything specified below (all blocks, markers, and fences, unchanged) as the file's full contents — do not also paste the full content into the chat. After the file, reply in the chat with only one short line confirming it's ready to download — no summary, no preview of the content.
-- If your interface has no file-creation capability at all, this section does not apply — output everything directly in the chat exactly as specified below, unchanged.
-Never split the difference (e.g. a short preview file plus the rest in chat) — it is either the whole thing as one file, or the whole thing in chat.
+=== DELIVERY METHOD — CHECK FIRST ===
+Reader is likely on MOBILE, where copying a long reply is unreliable. Deliver as a file,
+in order: 1) can zip? → everything below (all blocks/markers/fences, unchanged) as ONE
+file inside a \`.zip\`, one short chat confirmation only, no paste. 2) no zip but can make
+a single file ("file"/"canvas")? → same content as ONE \`.txt\` file. 3) no file capability?
+→ output directly in chat, unchanged. Never split the difference — whole, one of the three.
 
-Output exactly three blocks, in this order, with nothing outside them (no extra commentary before, between, or after).
+If MULTI-PART DELIVERY above applies, this still governs delivery FORMAT (file vs. chat) for each reply; MULTI-PART DELIVERY governs how the blocks below split ACROSS replies.
 
-CRITICAL RENDERING RULE: the content of EVERY block (including the HTML body and the plain-text publisher notes) MUST sit inside a fenced code block (three backticks on their own line before and after the content, immediately inside the sentinel markers). This is because chat interfaces render raw HTML visually — without the code fence, the person copying your reply gets rendered text with every tag destroyed. The fence is what keeps your output copyable as source. Never skip it.
+Output exactly four blocks below, in this order, nothing outside them.
 
-ADDITIVE FIELDS — two extra fields in SEO_JSON beyond what's specified above:
-- "imageAltText": ONE single ALT text string for the article's featured/OG image, derived from whichever of your visuals best represents the topic as a whole — contains the Focus Keyphrase or a close variant, plus a concrete description of what the image shows.
-- "imagePrompt": a complete, ready-to-paste AI image-generation prompt (for Midjourney/DALL·E/Stable Diffusion) for that same featured image. Style it as a **loud, high-CTR YouTube-thumbnail-style graphic, never clean/minimal/corporate**: exaggerated facial expression (shock/confusion/excitement) on a student or teacher character, bold saturated colors, high contrast, a big punchy focal object tied to the topic, dramatic lighting/glow, thick outlines — the kind of image built to stop a scroll. Describe subject, composition, and this exaggerated attention-grabbing style explicitly — 16:9 aspect ratio suitable for a WordPress featured image, and explicitly specify NO readable text/typography baked into the image (WordPress overlays the title separately).
+CRITICAL RENDERING RULE: every block's content (including the HTML body and the plain-text publisher notes) MUST sit inside a fenced code block (three backticks before and after, inside the sentinel markers) — chat interfaces render raw HTML visually, so without the fence the person copying your reply gets every tag destroyed. Never skip it.
+
+ADDITIVE FIELDS — two extra SEO_JSON fields beyond what's specified above:
+- "imageAltText": ONE ALT text string for the featured/OG image, from whichever visual best represents the topic — contains the Focus Keyphrase or a close variant plus a concrete description of what the image shows.
+- "imagePrompt": a complete, ready-to-paste AI image-generation prompt for that image. Style: **loud, high-CTR YouTube-thumbnail graphic, never clean/minimal/corporate** — exaggerated expression on a student/teacher character, saturated colors, high contrast, a punchy focal object tied to the topic, dramatic lighting, thick outlines. 16:9, WordPress featured-image format, NO readable text/typography baked in (the title is overlaid separately).
 
 <<<SEO_JSON>>>
 \`\`\`json
@@ -1178,7 +1186,7 @@ ADDITIVE FIELDS — two extra fields in SEO_JSON beyond what's specified above:
 
 <<<NOTES_BODY_HTML>>>
 \`\`\`html
-(the complete pure-HTML notes body exactly as specified above — the Table of Contents through the end of Section 9 and its ad slot, nothing removed, nothing summarized)
+(the complete pure-HTML notes body exactly as specified above — everything from the Table of Contents through the final ad slot and closing sections, nothing removed, nothing summarized)
 \`\`\`
 <<<END_NOTES_BODY_HTML>>>
 
@@ -1202,17 +1210,17 @@ ADDITIVE FIELDS — two extra fields in SEO_JSON beyond what's specified above:
 }
 \`\`\`
 <<<END_CONTENT_MEMORY_JSON>>>
-A fourth block, purely for the pipeline's own record-keeping (never shown to a reader) — a lightweight, factual summary of what THIS specific article actually contains, so a future run on a related topic can be told what's already been covered and avoid repeating the same misconception/example/shape choices. Every field reports what you actually wrote, not a plan:
-- "flavour": the exact FLAVOUR_ENGINE id you chose under EDITORIAL FLAVOUR above (e.g. "worked-example").
-- "concepts_taught": the specific named concepts/sub-topics actually explained (not the whole TOPIC string repeated — the individual ideas inside it).
-- "misconceptions_used": the specific wrong-belief(s) actually corrected in a Mistake card or similar, in a few words each.
-- "examples_used": the specific real-life examples/analogies actually used (e.g. "12 and 18", "government-school classroom") — this is what your EDITORIAL FLAVOUR's example strategy cashes out to in practice.
-- "pedagogical_strategy": one short phrase for the dominant teaching approach this article actually used (e.g. "worked-example", "compare-and-contrast", "story-first", "definition-drill").
-- "article_shape": the actual section sequence you wrote, as short lowercase labels in order (e.g. ["hook","concept","worked-example","exam-application","practice"]).
-- "question_types": the practice-question types actually used, matching QUESTION TYPE DIVERSITY above.
-- "sources": the real sources actually cited (names, not URLs — URLs already live in the body's citations).
+Fourth block, for the pipeline's own record-keeping (never shown to a reader) — a factual summary of what THIS article actually contains, so a future run avoids repeating the same choices. Every field reports what you actually wrote, not a plan:
+- "flavour": the FLAVOUR_ENGINE id you used.
+- "concepts_taught": the specific named sub-ideas actually explained (not TOPIC repeated).
+- "misconceptions_used": the specific wrong belief(s) actually corrected, briefly.
+- "examples_used": the specific real-life examples/analogies actually used.
+- "pedagogical_strategy": one short phrase for the dominant teaching approach used.
+- "article_shape": the actual section sequence, as short lowercase labels in order.
+- "question_types": the practice-question types actually used.
+- "sources": the real sources actually cited (names, not URLs).
 
-If you run out of space and cannot finish, stop cleanly at the end of a complete HTML element — the user will send "continue" and you must resume EXACTLY where you stopped (same block, inside a new code fence, no repetition of anything already written, no fresh introduction).
+If this topic needed more than one reply, follow MULTI-PART DELIVERY above rather than improvising a stop/continue — that section is the single source of truth for how to split.
 `;
 }
 
@@ -1298,13 +1306,33 @@ async function buildPrompt(){
   masterTemplate = masterTemplate.replace('{{EDITORIAL_VARIETY_BLOCK}}', await buildEditorialVarietyBlock(topic, examType, subject));
   masterTemplate = masterTemplate.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
 
-  const evidence = await buildEvidenceBlock(topic, subject);
+  // RAG EVIDENCE DISABLED FOR NOW (2026-10-06) — not deleted, just short-
+  // circuited. Two confirmed, unresolved problems made it worse than useless:
+  // (1) the NCERT corpus is Hindi-medium and this tool's topics are typed in
+  // English — BM25 token-overlap against an English query returns ~zero real
+  // hits for almost any real topic, mapped subject or not (confirmed: a
+  // Hindi query for "प्रकाश संश्लेषण" scores 3.96 against the Science shard;
+  // the English "Photosynthesis" scores 0 against the same shard). (2) the
+  // NCERT source corpus itself has a confirmed text-corruption bug (at least
+  // a systematic "फ" -> "पफ" splitting affecting ~0.37% of words / ~2.7% of
+  // sentences across the whole corpus, likely more from a still-unquantified
+  // missing-matra class) — HARD BAN #9 tells the AI to quote this "exactly",
+  // so a working retrieval would have been citing garbled Hindi as if it
+  // were a verbatim real source. Re-enable only after both are fixed.
+  const evidence = { text: '', usedNcert: false };
   const linksText = await buildInternalLinksBlock(topic, subject, examType);
-  // Skip the weak "here's a GitHub folder link, read it yourself" fallback
-  // when buildEvidenceBlock() already pulled real excerpts from that same
-  // NCERT corpus — repeating both wastes budget on the same source twice.
-  const refBlockWithEvidence = buildReferenceSourcesBlock(subject) + (evidence.usedNcert ? '' : buildNcertKnowledgeBaseBlock(subject));
-  const refBlockNoEvidence = buildReferenceSourcesBlock(subject) + buildNcertKnowledgeBaseBlock(subject);
+  // buildNcertKnowledgeBaseBlock() (the "here's a GitHub folder, read it
+  // yourself" fallback) is also skipped here — it's a fallback FOR the same
+  // disabled/distrusted NCERT corpus above, not an independent feature.
+  //
+  // REFERENCE_SOURCES_BLOCK (the static NCF/NEP/RTE list injected into every
+  // prompt regardless of topic relevance) was removed from the master prompt
+  // template itself on 2026-10-06 — per an explicit decision that sourcing
+  // should rely on the AI's own found/verified links (HARD BAN 5), not a
+  // fixed injected whitelist, and because this ~500-char block was eating
+  // into the budget that real per-topic internal links need (see SAFE_CEILING
+  // below). buildReferenceSourcesBlock()/getReferenceSources() above are now
+  // dead code kept only for the #refUrlList settings-panel chip display.
 
   const config = state.isUpdate ? updateConfig(topic, examType, subject, hindiPercent) : `=== RUN THIS GENERATION WITH THESE EXACT INPUT VARIABLES ===
 TOPIC: ${topic}
@@ -1324,9 +1352,8 @@ LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}%
   // content that DOES apply — see Automation/core/src/prompt-assembler.mjs.
   // Falls back to the untrimmed text if the assembler is unavailable; this
   // must never block prompt generation.
-  function assemble(refText, evidenceText, linksTxt){
+  function assemble(evidenceText, linksTxt){
     let m = masterTemplate
-      .replace('{{REFERENCE_SOURCES_BLOCK}}', refText)
       .replace('{{EVIDENCE_BLOCK}}', evidenceText)
       .replace('{{INTERNAL_LINKS_BLOCK}}', linksTxt);
     try{
@@ -1347,9 +1374,8 @@ LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}%
   // rather than let the hard ceiling reject the whole prompt outright.
   const SAFE_CEILING = 17500;
   const candidates = [
-    () => assemble(refBlockWithEvidence, evidence.text, linksText),
-    () => assemble(refBlockWithEvidence, evidence.text, ''),
-    () => assemble(refBlockNoEvidence, '', ''),
+    () => assemble(evidence.text, linksText),
+    () => assemble(evidence.text, ''),
   ];
   let master = candidates[0]();
   for(let i = 1; i < candidates.length && (config + master + footer).length > SAFE_CEILING; i++){
@@ -1991,16 +2017,100 @@ function copyContinue(btn){
 - When the current block is complete, close it with its END marker and continue with the remaining blocks per the original PIPELINE OUTPUT CONTRACT (code fences mandatory).`;
   doCopy(t, btn, msg('parseMsg'), '"Continue" prompt copied — paste it in the SAME chat, then paste the new reply here with the continuation checkbox ticked.');
 }
+/* ================= UPLOAD INGESTION: loose files + .zip =================
+   Different AIs package a multi-block reply differently when asked to
+   deliver it as a file instead of chat text — confirmed directly against
+   real replies: DeepSeek keeps everything as one chat/text block; ChatGPT
+   offers to zip separate HTML/JSON/text files per block, or several
+   numbered HTML "parts" with no sentinels at all. parseResponse()'s own
+   sentinel/fence/label-text fallbacks already handle a SINGLE file in any
+   of those shapes — what was missing is turning a MULTI-file .zip into the
+   one raw text blob those fallbacks already expect. This section does
+   exactly that and nothing more: it never second-guesses parseResponse()'s
+   own extraction, it just re-assembles loose pieces into the shape a
+   normal well-formed reply already has, then hands that off unchanged. */
+const SENTINEL_KEYS = ['<<<SEO_JSON>>>','<<<NOTES_BODY_HTML>>>','<<<PUBLISHER_NOTES>>>','<<<CONTENT_MEMORY_JSON>>>'];
+function alreadySentinelWrapped(text){ return SENTINEL_KEYS.some(k => text.includes(k)); }
+// Loose (un-sentineled) file -> best-guess role. Content shape first (a
+// model's filename choices vary far more than its field names), filename
+// second, defaulting to 'body-part' — the common case for a numbered-parts
+// zip with no sentinels at all (e.g. 01_*.html, 02_*.html, ...).
+function classifyLooseFile(filename, text){
+  const trimmed = text.trim();
+  if(trimmed.startsWith('{')){
+    try{
+      const obj = JSON.parse(trimmed);
+      if(obj && typeof obj === 'object'){
+        if('focusKeyword' in obj || 'seoTitle' in obj) return 'seo';
+        if('concepts_taught' in obj || 'flavour' in obj) return 'memory';
+      }
+    }catch(e){ /* not valid JSON — fall through to filename check below */ }
+  }
+  const name = (filename||'').toLowerCase();
+  if(name.includes('publisher')) return 'publisher';
+  if(name.includes('memory')) return 'memory';
+  if(name.includes('seo')) return 'seo';
+  return 'body-part';
+}
+function wrapSentinel(kind, content){
+  const t = content.trim();
+  if(kind==='seo') return `<<<SEO_JSON>>>\n\`\`\`json\n${t}\n\`\`\`\n<<<END_SEO_JSON>>>\n\n`;
+  if(kind==='memory') return `<<<CONTENT_MEMORY_JSON>>>\n\`\`\`json\n${t}\n\`\`\`\n<<<END_CONTENT_MEMORY_JSON>>>\n\n`;
+  if(kind==='publisher') return `<<<PUBLISHER_NOTES>>>\n\`\`\`\n${t}\n\`\`\`\n<<<END_PUBLISHER_NOTES>>>\n\n`;
+  return t + '\n\n';
+}
+// Assembles one or more extracted {name, text} files into a single raw blob
+// parseResponse() can read exactly like a normal pasted reply. A single
+// already-sentinel-wrapped file (the common case: one .html with all four
+// blocks inside) passes through untouched. Otherwise: anything that already
+// carries its own sentinel(s) passes through as-is; every loose piece gets
+// classified, 'body-part' pieces are concatenated in filename order inside
+// ONE NOTES_BODY_HTML pair (so 01_/02_/... ordering works), and the rest
+// land in the canonical SEO -> body -> publisher -> memory order regardless
+// of what order they were zipped in.
+function assembleRawFromFiles(entries){
+  if(entries.length === 1 && alreadySentinelWrapped(entries[0].text)) return entries[0].text;
+  const sorted = [...entries].sort((a,b) => a.name.localeCompare(b.name));
+  const passthrough = [];
+  const byKind = { seo:[], publisher:[], memory:[], 'body-part':[] };
+  for(const {name, text} of sorted){
+    if(alreadySentinelWrapped(text)){ passthrough.push(text); continue; }
+    byKind[classifyLooseFile(name, text)].push(text);
+  }
+  let out = passthrough.join('\n\n');
+  if(byKind.seo.length) out += '\n\n' + wrapSentinel('seo', byKind.seo[0]);
+  if(byKind['body-part'].length){
+    out += `\n\n<<<NOTES_BODY_HTML>>>\n\`\`\`html\n${byKind['body-part'].map(t=>t.trim()).join('\n\n')}\n\`\`\`\n<<<END_NOTES_BODY_HTML>>>\n\n`;
+  }
+  if(byKind.publisher.length) out += '\n\n' + wrapSentinel('publisher', byKind.publisher[0]);
+  if(byKind.memory.length) out += '\n\n' + wrapSentinel('memory', byKind.memory[0]);
+  return out.trim();
+}
 function loadRawInFromFile(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+  const finish = (entries) => {
+    let assembled;
+    try{ assembled = assembleRawFromFiles(entries); }
+    catch(e){ show(msg('parseMsg'), 'bad', `Could not process "${file.name}": ${e.message}`); return; }
     const ta = document.getElementById('rawIn');
     const append = document.getElementById('appendMode').checked && ta.value.trim();
-    ta.value = append ? (ta.value + '\n' + reader.result) : reader.result;
-    show(msg('parseMsg'), 'ok', `Loaded "${file.name}" (${(file.size/1024).toFixed(1)} KB) into the paste box — review it, then tap Parse.`);
+    ta.value = append ? (ta.value + '\n' + assembled) : assembled;
+    show(msg('parseMsg'), 'ok', `Loaded "${file.name}" (${(file.size/1024).toFixed(1)} KB${entries.length>1?`, ${entries.length} files`:''}) into the paste box — review it, then tap Parse.`);
   };
+  if(/\.zip$/i.test(file.name)){
+    if(!window.JSZip){ show(msg('parseMsg'), 'bad', 'ZIP support failed to load (shared/jszip.min.js) — try pasting the content instead.'); return; }
+    JSZip.loadAsync(file).then(zip => {
+      const textFiles = Object.values(zip.files).filter(f => !f.dir && /\.(html?|txt|md|json)$/i.test(f.name));
+      if(!textFiles.length) throw new Error(`no .html/.txt/.md/.json files found inside "${file.name}"`);
+      return Promise.all(textFiles.map(f => f.async('string').then(text => ({ name:f.name, text }))));
+    }).then(finish)
+      .catch(e => show(msg('parseMsg'), 'bad', `Could not read "${file.name}" as a zip: ${e.message}`));
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => finish([{ name:file.name, text:String(reader.result||'') }]);
   reader.onerror = () => show(msg('parseMsg'), 'bad', `Could not read "${file.name}" — try pasting the content instead.`);
   reader.readAsText(file, 'utf-8');
   input.value = '';

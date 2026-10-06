@@ -7,7 +7,7 @@ person — can read this folder first and pick up full context without
 re-deriving it from scratch or asking the user to repeat themselves.
 
 This is scoped to **this repo only** (`Notes-factory`). It is not a replacement
-for `AgentLog.md` at the ExamNotesPDF project root, which covers the broader
+for `AgentLog.md` at the project root, which covers the broader
 project (server deploys, WordPress theme/plugin work, credentials reference)
 outside this repo's boundary — link to it, don't duplicate it.
 

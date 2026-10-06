@@ -27,7 +27,7 @@ export const FLAVOUR_ENGINE = [
   { id: 'worked-example', goal: 'learn through solving', flow: 'problem > worked-solution > reasoning > variation', best_for: ['Maths', 'Science'], signals: ['calculate', 'formula', 'सूत्र', 'solve', 'steps', 'method'] },
   { id: 'compare-and-contrast', goal: 'separate easily confused concepts', flow: 'shared-ground > difference > boundary-cases > practice', best_for: ['Language', 'History', 'Science', 'CDP'], signals: ['vs', 'और', 'अंतर', 'difference', 'compare', 'तुलना'] },
   { id: 'question-led', goal: 'let a sequence of practice questions drive the explanation', flow: 'question > explanation > question > explanation > summary', best_for: ['revision-adjacent topics with a large question bank'], signals: ['practice', 'questions', 'अभ्यास', 'quiz'] },
-  { id: 'exam-trap-first', goal: 'open with the specific way this exam tricks candidates on this topic', flow: 'trap > why-it-works > correct-approach > practice', best_for: ['topics with a documented distractor pattern'], signals: ['trap', 'trick', 'distractor', 'जाल'] },
+  { id: 'exam-trap-first', goal: 'teach the concept properly first; the documented distractor pattern is ONE aside card inside that teaching, never the note\'s opening line or its organizing voice — this is not permission to narrate the whole note as exam-strategy commentary', flow: 'concept > example > trap-as-aside-card > practice', best_for: ['topics with a documented distractor pattern'], signals: ['trap', 'trick', 'distractor', 'जाल'] },
   { id: 'classroom-situation', goal: 'ground the whole topic in a realistic classroom scenario', flow: 'scenario > teacher-decision > theory-link > practice', best_for: ['CDP/Pedagogy topics', 'teacher-eligibility exams'], signals: ['classroom', 'teacher', 'student', 'कक्षा', 'शिक्षक', 'pedagogy'] },
   { id: 'classification', goal: 'teach by building out a clean classification/taxonomy', flow: 'category-map > sub-type-detail > examples > practice', best_for: ['Science/EVS/Geography topics with real sub-types'], signals: ['types', 'kinds', 'प्रकार', 'classification', 'category'] },
   { id: 'chronology-cause-effect', goal: 'teach as a sequence of events with causes and effects', flow: 'timeline > cause > effect > exam-relevance', best_for: ['History topics', 'policy-evolution topics'], signals: ['history', 'timeline', 'कब', 'इतिहास', 'causes', 'policy'] },
@@ -169,12 +169,19 @@ export function buildFlavourPromptBlock(ctx, recentMemory = []) {
 // than a question-hook"; repetition-avoidance + the same deterministic
 // hash tie-break is enough to guarantee variety without inventing a signal
 // that isn't actually grounded in anything.
+// Deliberately balanced, not weighted toward conversational devices: three
+// plain/formal options (direct-definition-hook, scope-hook, stat-or-fact-hook)
+// against three more conversational ones (question-hook, scenario-hook,
+// provocative-claim-hook) — an earlier version of this list was 4-to-1 toward
+// conversational hooks with no counterweight, which is part of why notes
+// defaulted to a chatty, coaching-class voice instead of a textbook one.
 const OPENING_STYLES = [
   { id: 'question-hook', description: 'a sharp question the reader genuinely wants answered, then answer it' },
   { id: 'stat-or-fact-hook', description: 'one real, sourced fact or figure that reframes why this topic matters' },
   { id: 'scenario-hook', description: 'a concrete classroom/exam-hall situation, then pull back to the concept' },
   { id: 'direct-definition-hook', description: 'naming and defining the core idea plainly, no preamble' },
-  { id: 'provocative-claim-hook', description: 'a common wrong belief about this topic, then correct it' },
+  { id: 'provocative-claim-hook', description: 'a common wrong belief about this topic, then correct it — stated once, plainly, not as a running "gotcha" voice for the rest of the note' },
+  { id: 'scope-hook', description: 'plainly stating what this topic covers and why it matters for this exam, in a neutral teaching register — no hook device at all, just a clean start' },
 ];
 
 /**

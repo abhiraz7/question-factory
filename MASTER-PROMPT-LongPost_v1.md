@@ -1,6 +1,6 @@
 > **⚠️ This file is documentation only — it is no longer loaded by the app.** `long-post-factory/index.html` builds its prompt entirely in-page (see `buildLongPostPrompt()` / `EXAM_PROFILES`). Treat this as the design reference to port into that function — editing this file alone changes nothing live.
 
-# MASTER PROMPT — ExamNotesPDF Long Post Engine (v2 — Block-Tag System, Variety-First, Low-Token)
+# MASTER PROMPT — Long Post Engine (v2 — Block-Tag System, Variety-First, Low-Token)
 
 > **What changed from v1:** v1 forced identical structure on every article (fixed 9-section order, mandatory 4–6 SVGs, a hard keyphrase-repeat count) to chase an SEO checklist. At volume, across many exams/topics, that skeleton is exactly the fingerprint Google's *Scaled Content Abuse* policy targets — same shape, same card labels, same link pattern, thousands of times. v2 keeps every content/honesty/citation rule, but replaces the rigid skeleton with a **menu + a real per-article plan**, drops the mechanical repeat-count, and makes reaching real depth (not padding) the way to hit length.
 
