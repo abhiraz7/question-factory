@@ -99,6 +99,17 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .previewFrame{width:100%;height:360px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
   .noteRow{display:flex;gap:8px;align-items:center;margin:4px 0}
   .noteRow input[type=checkbox]{width:auto}
+  /* App-style bottom-sheet modal (duplicate-topic interrupt) — not an inline
+     banner easy to scroll past, a real decision point like a native app
+     would show: dims the page, slides up, stays until the person chooses. */
+  .modalOverlay{position:fixed;inset:0;background:rgba(10,10,14,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .modalOverlay.show{opacity:1;pointer-events:auto}
+  .modalSheet{background:var(--card);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:var(--shadow);transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1)}
+  .modalOverlay.show .modalSheet{transform:translateY(0)}
+  .modalHandle{width:36px;height:4px;background:var(--line);border-radius:99px;margin:0 auto 16px}
+  .modalSheet h3{font-size:17px;margin:0 0 6px;font-weight:700;letter-spacing:-0.01em;display:flex;align-items:center;gap:8px}
+  .modalSheet p{color:var(--ink-soft);font-size:13.5px;line-height:1.55;margin:0 0 4px}
+  .modalSheet code{background:var(--card-2);border-radius:6px;padding:1px 6px;font-size:12.5px}
   .copyRow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
   .copyRow:last-child{border-bottom:none}
   .copyRow .cLabel{font-weight:600;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
@@ -182,7 +193,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <label>Topic (type any topic — suggestions shown from the CDP list, but any subject's topic is fine)</label>
   <input type="text" id="topic" list="topicSuggestions" placeholder="e.g. Photosynthesis, Mughal Empire, Growth & Development..." oninput="this.classList.remove('fieldErr'); checkTopicAgainstPublished()">
-  <div id="topicLiveWarn"></div>
+  <p class="hint" id="topicLiveWarn" style="display:none;margin:4px 0 0"></p>
   <datalist id="topicSuggestions"></datalist>
 
   <details id="topicBankDetails" ontoggle="openTopicBank()" style="margin-top:8px">
@@ -659,22 +670,38 @@ function findPublishedMatch(topic, slugs){
   return best;
 }
 var topicCheckTimer = null;
+// Tracks which matched slug the popup has already been shown+dismissed for,
+// so it interrupts once per distinct match — not on every keystroke while
+// the person is still typing/refining the same topic.
+var dupModalDismissedFor = null;
+function openDupModal(match){
+  document.getElementById('dupModalSlug').textContent = match;
+  document.getElementById('dupModalUpdateBtn').href = `../update-factory/index.html?slug=${encodeURIComponent(match)}`;
+  document.getElementById('dupModalOverlay').classList.add('show');
+}
+function dismissDupModal(){
+  document.getElementById('dupModalOverlay').classList.remove('show');
+  dupModalDismissedFor = document.getElementById('dupModalSlug').textContent;
+}
 function checkTopicAgainstPublished(){
   clearTimeout(topicCheckTimer);
   const el = document.getElementById('topicLiveWarn');
   if(!el) return;
   const topic = document.getElementById('topic').value.trim();
-  if(!topic){ el.className=''; el.innerHTML=''; return; }
+  if(!topic){ el.style.display='none'; el.textContent=''; return; }
   topicCheckTimer = setTimeout(async ()=>{
     // the field may have changed (or been cleared) during the debounce wait
     if(document.getElementById('topic').value.trim() !== topic) return;
     const slugs = await loadPublishedSlugs();
     const match = findPublishedMatch(topic, slugs);
-    el.className = match ? 'msg show warn' : '';
-    el.innerHTML = match
-      ? `⚠ A note matching this topic may already exist: <code>${match}</code> — check before generating a duplicate.
-         <a href="../update-factory/index.html?slug=${encodeURIComponent(match)}" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;font-weight:600">Update it instead →</a>`
-      : '';
+    if(match){
+      el.style.display='block';
+      el.innerHTML = `Matches a published note: <code>${match}</code>`;
+      if(match !== dupModalDismissedFor) openDupModal(match);
+    } else {
+      el.style.display='none'; el.textContent='';
+      document.getElementById('dupModalOverlay').classList.remove('show');
+    }
   }, 400);
 }
 
@@ -3172,5 +3199,16 @@ render();
   document.readyState==='loading' ? document.addEventListener('DOMContentLoaded',mount) : mount();
 })();
 </script>
+
+<div class="modalOverlay" id="dupModalOverlay" onclick="if(event.target===this) dismissDupModal()">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <h3>⚠️ This topic may already exist</h3>
+    <p>A published note matches: <code id="dupModalSlug"></code></p>
+    <p>Generating a fresh note anyway will likely duplicate it. Want to update the existing one instead?</p>
+    <a class="btn" id="dupModalUpdateBtn" href="#" target="_blank" rel="noopener" onclick="dismissDupModal()">Update it instead →</a>
+    <button class="btn ghost" type="button" onclick="dismissDupModal()">Continue — create a new note anyway</button>
+  </div>
+</div>
 </body>
 </html>
