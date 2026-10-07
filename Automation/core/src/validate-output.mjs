@@ -49,6 +49,16 @@ function checkSentinelArtifacts(bundle, issues) {
   if (/\{\*\s*type\s*:/.test(body)) {
     pushIssue(issues, 'error', 'UNEXPANDED_BLOCK_TAG', 'Body contains an unexpanded {* type: ... *} block-tag marker — the block-tag expander failed or was skipped.');
   }
+  // Catches any invented `{Identifier(...)}` macro/function-call-looking
+  // placeholder standing in for real HTML — confirmed real, live example:
+  // `{C("Teacher decision loop","Observe -> ...","#16a34a")}` shipped as
+  // literal text in a generated note instead of a styled card. There is no
+  // expander for these (unlike the {* type *} block-tag system, which at
+  // least had one at one point) — this is pure HARD BAN 7 violation.
+  const macroMatch = body.match(/\{[A-Za-z][A-Za-z0-9_]*\([^)]*\)\}/);
+  if (macroMatch) {
+    pushIssue(issues, 'error', 'UNEXPANDED_MACRO_PLACEHOLDER', `Body contains an invented macro-like placeholder instead of real HTML (e.g. "${macroMatch[0].slice(0, 60)}") — HARD BAN 7 violation, no expander exists for this.`);
+  }
   if (/<<<[A-Z_]+>>>/.test(body)) {
     pushIssue(issues, 'error', 'LEAKED_SENTINEL', 'Body contains a literal <<<SENTINEL>>> marker that should have been stripped during parsing.');
   }

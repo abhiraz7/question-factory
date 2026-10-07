@@ -37,7 +37,11 @@ not addressed recently (consider if relevant). Low/zero confidence → ignore, w
    official/primary (government, NCERT, the exam body, ERIC) over blogs/SEO when there's
    a real choice — the test is realness and relevance, not a fixed domain list.
 6. SEO panel/Publisher Notes are pipeline-parsed — copy field-for-field, drop none.
-7. Hand-write the HTML — no markdown, `{* type *}` blocks, or chart JSON.
+7. Hand-write the real, final HTML directly — no markdown, no `{* type *}` blocks, no
+   chart JSON, and no invented shorthand/macro/function-call-looking placeholder of any
+   kind (e.g. `{C("label","text","#hex")}`) standing in for a card or diagram you meant
+   to write out. If it isn't literal HTML a browser can render as-is, it doesn't belong
+   in the output — there is no second pass that expands it.
 8. Never leave a heading with nothing under it.
 9. No fabricated citations, none that LOOK sourced but aren't checkable ("Ministry
    releases, 2024-25" isn't one) — a real rule-5 URL, or none.
@@ -128,14 +132,12 @@ Summary `#65a30d` · Rapid Revision dashed `#2563eb` · Advanced Insight `#9333e
 Updates `#16a34a`. **Vary card titles** — not every Definition card literally titled
 "Definition."
 
-SVGs: draw one for EVERY process, hierarchy, cycle, cause→effect or concept-map-worthy
-relationship the topic genuinely has — default to drawing it, not skipping it; a full note
-typically earns 4–8, not a token one or two. Pick by relationship: steps/process→flowchart,
-categories→tree, sequence→timeline, idea-relationships→concept map, cycle→loop. A
-comparison/stats is still a table, not a diagram. Hand-drawn style: `viewBox="0 0 360 H"
-width="100%"`, white card, `role="img"` + real `aria-label`, unique marker ids, node text
-≤26 chars. `#2563eb`/`#1e3a8a`/`#eff6ff` core, `#16a34a` outcomes, `#9333ea` loops,
-`#e11d48` warnings.
+SVGs (0–6, only if clearer than prose, hand-drawn): `viewBox="0 0 360 H" width="100%"`,
+white card, `role="img"` + real `aria-label`, unique marker ids, node text ≤26 chars.
+`#2563eb`/`#1e3a8a`/`#eff6ff` core, `#16a34a` outcomes, `#9333ea` loops, `#e11d48`
+warnings. A real comparison is usually a table, not a diagram. Never skip a genuinely
+clarifying diagram just to hit a low count, and never force one in just to hit a high
+one — zero SVGs is the right answer for plenty of topics.
 
 ## AD SLOTS — normally 3, spread early/middle/late, never bunched at the end (reuse verbatim):
 ```html
