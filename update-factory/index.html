@@ -290,7 +290,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <fieldset id="filePickWrap" style="display:none;margin-top:14px">
     <legend>Manual file picker (only needed if the automatic load above failed)</legend>
-    <p class="hint" style="margin-top:0">Pick <code>MASTER-PROMPT-ExamNotesPDF_v13.md</code> from the repo root — only needed when updating a Note (Long Posts don't use a separate master-prompt file).</p>
+    <p class="hint" style="margin-top:0">Pick <code>MASTER-PROMPT-ExamNotesPDF_v16.md</code> from the repo root — only needed when updating a Note (Long Posts don't use a separate master-prompt file).</p>
     <input type="file" id="masterPromptFile" accept=".md">
   </fieldset>
 </section>
@@ -444,6 +444,14 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      mirrored by gen-flavour-engine-browser.mjs) — window.FlavourEngine.
      buildFlavourBlock() below falls back to plain text if this fails to load. -->
 <script src="../shared/flavour-engine.js"></script>
+<!-- Shared Editorial Intelligence (Automation/core/src/editorial-intelligence.mjs,
+     mirrored by gen-editorial-intelligence-browser.mjs) — window.EditorialIntelligence.
+     buildEditorialSignatureBlock() below falls back to plain text if this fails to load. -->
+<script src="../shared/editorial-intelligence.js"></script>
+<!-- BM25 (Automation/core/src/bm25.mjs, mirrored to shared/bm25.js) — window.BM25.
+     Used only by buildInternalLinksBlock() below to rank real published posts
+     against the topic; degrades to '' on failure, same contract as notes-factory. -->
+<script src="../shared/bm25.js"></script>
 <!-- Prompt Assembler (Automation/core/src/master-prompt-modules.mjs +
      prompt-assembler.mjs, mirrored by gen-prompt-assembler-browser.mjs) —
      window.PromptAssembler, shared with notes-factory/long-post-factory. -->
@@ -1060,6 +1068,100 @@ async function buildFlavourBlock(topic, examType, subject){
   }catch(e){ return FLAVOUR_ENGINE_FALLBACK_TEXT; }
 }
 
+/* The following block (excerptFor through buildEditorialSignatureBlock) is
+   ported from notes-factory/index.html's identical functions, so that NOTE
+   UPDATES get the same editorial-signature/internal-links/variety features
+   as fresh notes instead of silently dropping them. That file is never
+   edited from here — keep both copies in lockstep if either changes. */
+function excerptFor(text, maxLen){
+  const t = String(text||'').replace(/\s+/g,' ').trim();
+  if(t.length <= maxLen) return t;
+  return t.slice(0, maxLen).trim() + '…';
+}
+
+async function buildInternalLinksBlock(topic, subject, examType){
+  if(!window.BM25) return '';
+  let posts = [];
+  try{
+    const base = 'https://examnotespdf.in/wp-json/wp/v2/free_notes?status=publish&per_page=100&_fields=slug,link,title';
+    let page = 1;
+    let totalPages = 1;
+    while(page <= totalPages && page <= 5){
+      const res = await fetch(`${base}&page=${page}`);
+      if(!res.ok) break;
+      const tp = Number(res.headers.get('X-WP-TotalPages'));
+      if(tp) totalPages = tp;
+      const batch = await res.json();
+      if(!Array.isArray(batch) || !batch.length) break;
+      posts = posts.concat(batch);
+      page++;
+    }
+  }catch(e){ return ''; }
+  if(!posts.length) return '';
+
+  const queryTerms = new Set(window.BM25.tokenize(`${topic} ${subject||''} ${examType||''}`));
+  const scored = posts.map(p => {
+    const title = (p.title && (p.title.rendered || p.title)) || '';
+    const titleTerms = window.BM25.tokenize(title);
+    const overlap = titleTerms.filter(t => queryTerms.has(t)).length;
+    return { title: excerptFor(title, 70), link: p.link, overlap };
+  }).filter(p => p.link && p.title);
+  scored.sort((a,b) => b.overlap - a.overlap);
+  const top = scored.slice(0, 6);
+  if(!top.length) return '';
+
+  const lines = top.map(p => `- ${p.title}: ${p.link}`).join('\n');
+  return `
+
+## INTERNAL LINKS TO USE — real, currently-live URLs on this site
+Weave ${top.length >= 6 ? 'all of' : 'as many as fit naturally from'} these into the
+body as contextual anchor text (not a bare list). Do NOT invent any other internal
+link or slug.
+${lines}`;
+}
+
+const OPENING_STYLE_FALLBACK_TEXT = 'Open this note with whichever hook (a question, a real fact, a classroom scenario, a plain definition, or a common misconception) genuinely suits this topic best, and vary it from your last note on this exam.';
+async function buildEditorialVarietyBlock(topic, examType, subject){
+  try{
+    if(!window.FlavourEngine) return OPENING_STYLE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    return window.FlavourEngine.buildEditorialVarietyBlock({ topic, exam: examType, subject }, recent);
+  }catch(e){ return OPENING_STYLE_FALLBACK_TEXT; }
+}
+
+const EDITORIAL_SIGNATURE_FALLBACK_TEXT = '(No history available this run — write normally, as if this section were not here.)';
+let learnedStateCache = null;
+async function loadLearnedState(){
+  if(learnedStateCache) return learnedStateCache;
+  try{
+    const res = await fetch(`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/generated/editorial/learned-state.json`);
+    learnedStateCache = res.ok ? await res.json() : { byExamSubject:{} };
+  }catch(e){ learnedStateCache = { byExamSubject:{} }; }
+  return learnedStateCache;
+}
+async function buildEditorialSignatureBlock(topic, examType, subject){
+  try{
+    if(!window.EditorialIntelligence) return EDITORIAL_SIGNATURE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    const sig = window.EditorialIntelligence.buildEditorialSignature({ topic, exam: examType, subject }, recent);
+    const learned = await loadLearnedState();
+    const pairState = learned.byExamSubject && learned.byExamSubject[`${examType}::${subject}`];
+    const structuralNote = pairState && pairState.recentStructures && pairState.recentStructures.structuralRepetitiveness > 0.6
+      ? `This exam+subject's recent notes reuse a similar section-shape/skeleton quite often (repetitiveness ${pairState.recentStructures.structuralRepetitiveness} of 1) — vary the section order/rhythm meaningfully, don't default to the same skeleton.`
+      : '';
+    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.avoidCardSentences.length && !sig.underusedMisconceptions.length && !structuralNote){
+      return `(confidence: ${sig.confidence} — no meaningful history yet for this exam+subject. Write normally, as if this section were not here.)`;
+    }
+    const lines = [`(confidence: ${sig.confidence})`];
+    if(structuralNote) lines.push(structuralNote);
+    if(sig.avoidConcepts.length) lines.push(`Recently covered concepts for this exam+subject (vary your treatment rather than repeating the same framing): ${sig.avoidConcepts.join('; ')}`);
+    if(sig.avoidExamples.length) lines.push(`Recently used examples for this exam+subject (prefer a different example if one fits as well): ${sig.avoidExamples.join('; ')}`);
+    if(sig.avoidCardSentences.length) lines.push(`Aside/callout card sentences already used verbatim recently for this exam+subject — do not reuse these exact sentences, write a fresh one for the same point: ${sig.avoidCardSentences.map(s=>'"'+s+'"').join('; ')}`);
+    if(sig.underusedMisconceptions.length) lines.push(`Misconceptions for this exam+subject not addressed recently (worth considering if genuinely relevant to TOPIC): ${sig.underusedMisconceptions.join('; ')}`);
+    return lines.join('\n');
+  }catch(e){ return EDITORIAL_SIGNATURE_FALLBACK_TEXT; }
+}
+
 async function buildLongPostPrompt(topic, examType, subject, hindiPercent, year){
   const profile = getExamProfile(examType);
   const seed = Array.from(topic+examType).reduce((a,c)=>a+c.charCodeAt(0),0) % 999 + 1;
@@ -1298,7 +1400,7 @@ CONTENT MEMORY sentinel present, valid JSON, all 7 fields filled honestly?      
    never edited, this is a copy) ================= */
 async function loadMasterPrompt(){
   if(masterPromptText) return masterPromptText;
-  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v13.md'];
+  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v16.md'];
   let lastErr;
   for(const url of candidates){
     try{
@@ -1311,7 +1413,7 @@ async function loadMasterPrompt(){
   const hint = location.protocol === 'file:'
     ? 'This page was opened straight from the folder (file://), where browsers block reading other files automatically.'
     : 'Could not load the master prompt file from the repo root ('+(lastErr?lastErr.message:'')+').';
-  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v13.md manually — then tap "Build update prompt" again.');
+  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v16.md manually — then tap "Build update prompt" again.');
 }
 function notesOutputContract(){
   return `
@@ -1400,6 +1502,18 @@ function getTeachingLevel(examTypeRaw){
   if (hasAny('paper i','paper 1') && !hasAny('paper ii','paper 2')) return 'Primary (Class 1–5)';
   if (hasAny('paper ii','paper 2')) return 'Upper Primary/Secondary (Class 6–10)';
   return 'Not explicitly stated — infer the most likely level from TOPIC/SUBJECT/EXAM TYPE context and state your inference once';
+}
+// Ported from notes-factory/index.html's identical const/function — fills
+// MASTER-PROMPT-ExamNotesPDF_v16.md's {{TEACHING_LEVEL_DETAIL}} slot.
+const TEACHING_LEVEL_DETAIL = {
+  'Primary (Class 1–5)': '**Primary (1–5)**: 6–10yo, concrete, FLN/NIPUN.',
+  'Upper Primary/Secondary (Class 6–10)': '**Upper Primary/Secondary (6–10)**: NCERT 6–10 depth.',
+  'Senior Secondary (Class 11–12)': '**Senior Secondary (11–12)/PGT**: NCERT 11–12 rigor, abstract reasoning.',
+};
+function getTeachingLevelDetail(examType){
+  const level = getTeachingLevel(examType);
+  if(TEACHING_LEVEL_DETAIL[level]) return TEACHING_LEVEL_DETAIL[level];
+  return Object.values(TEACHING_LEVEL_DETAIL).join(' ');
 }
 // Used by the embedded buildLongPostPrompt() copy below (long-post-factory's
 // own file has an identical function — keep both in lockstep if this changes).
@@ -1603,7 +1717,15 @@ async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
   // below, `refs + base`), so filling both would duplicate the section.
   master = master.replace('{{REFERENCE_SOURCES_BLOCK}}', '');
   master = master.replaceAll('{{TEACHING_LEVEL}}', getTeachingLevel(examType));
+  master = master.replace('{{TEACHING_LEVEL_DETAIL}}', getTeachingLevelDetail(examType));
   master = master.replace('{{FLAVOUR_ENGINE_BLOCK}}', await buildFlavourBlock(topic, examType, subject));
+  master = master.replace('{{EDITORIAL_VARIETY_BLOCK}}', await buildEditorialVarietyBlock(topic, examType, subject));
+  master = master.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
+  // RAG EVIDENCE DISABLED FOR NOW — same decision/reasons as notes-factory/
+  // index.html's buildPrompt() (Hindi-only NCERT corpus + a known source
+  // text-corruption bug); re-enable only after both are fixed there.
+  master = master.replace('{{EVIDENCE_BLOCK}}', '');
+  master = master.replace('{{INTERNAL_LINKS_BLOCK}}', await buildInternalLinksBlock(topic, subject, examType));
 
   // PROMPT ASSEMBLER — same shared function notes-factory/long-post-factory
   // use. tool:'notes' (not a separate 'update-note' id) because a note
