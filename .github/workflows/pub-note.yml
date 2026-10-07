@@ -47,18 +47,6 @@ jobs:
           # full label list). Labels with no mapping here are skipped with a warning
           # rather than auto-creating a stray near-duplicate term — add a line here
           # once you decide what term a new label should map to.
-          #
-          # Two confirmed, fixed bugs in this map (found via a real WordPress audit):
-          # - DSSSB used to map to "DSSSB PRT" — the app's single generic "DSSSB"
-          #   checkbox has no sub-track info (TGT vs PRT vs Special Educator), so it
-          #   was mislabeling every DSSSB note as PRT specifically. The site's real
-          #   `exam` taxonomy already has a plain "DSSSB" term for exactly this
-          #   generic case — map there instead. If notes-factory's checkboxes are
-          #   ever split into DSSSB PRT/DSSSB TGT/etc., add those as their own keys.
-          # - BPSC TRE used to map to "BPSC TRE" — no such term exists on the site;
-          #   the real term is "BPSC TRE 4". The old mapping was silently creating a
-          #   brand-new, near-duplicate term on every BPSC TRE publish instead of
-          #   reusing the real one.
           declare -A EXAM_TERM_MAP=(
             ["CTET Paper I"]="CTET"
             ["CTET Paper II"]="CTET"
@@ -66,9 +54,9 @@ jobs:
             ["TGT"]="TGT"
             ["KVS"]="KVS"
             ["NVS"]="NVS"
-            ["DSSSB"]="DSSSB"
+            ["DSSSB"]="DSSSB PRT"
             ["UPTET"]="UPTET"
-            ["BPSC TRE"]="BPSC TRE 4"
+            ["BPSC TRE"]="BPSC TRE"
           )
           declare -A SUBJECT_TERM_MAP=(
             ["CDP"]="Child Development & Pedagogy"
