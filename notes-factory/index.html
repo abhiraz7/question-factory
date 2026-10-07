@@ -64,7 +64,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .hint{color:var(--ink-soft);font-size:13px;margin:0 0 18px;line-height:1.55}
   label{display:block;font-weight:600;font-size:12.5px;margin:16px 0 6px;color:var(--ink-soft);letter-spacing:.01em}
   input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;color:var(--ink);background:var(--card);font-size:15px;transition:border-color .15s ease, box-shadow .15s ease}
-  textarea{min-height:110px;resize:vertical;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px}
+  textarea{min-height:110px;resize:vertical;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;line-height:1.5}
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .btn{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:var(--radius-sm);border:1px solid transparent;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:650;font-size:14.5px;cursor:pointer;margin-top:12px;transition:transform .1s ease, opacity .15s ease, background .15s ease}
@@ -126,10 +126,47 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   fieldset legend{font-size:12px;font-weight:600;color:var(--ink-soft);padding:0 5px}
   .privacyNote{background:var(--card-2);border-radius:var(--radius-sm);padding:11px 13px;font-size:12px;color:var(--ink-soft);margin-top:10px}
   .fieldErr{border-color:var(--bad) !important;box-shadow:0 0 0 3px var(--bad-bg) !important}
+
+  /* ---- grouped minimal list (iOS-Settings style) for Step 3's SEO fields —
+     one bordered card, thin dividers between rows, instead of each field
+     being its own separate boxed card. Flatter = more minimal, and it reads
+     as one coherent group instead of a stack of similar-looking cards. ---- */
+  .fieldCard{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow:hidden;margin-top:10px}
+  .fieldCard .fieldRow{margin:0;border:none;border-radius:0;border-bottom:1px solid var(--line-soft)}
+  .fieldCard .fieldRow:last-child{border-bottom:none}
+  .fieldCard .fieldRow summary{padding:13px 14px}
+  .fieldCard .fieldRow>input,.fieldCard .fieldRow>textarea{margin:0 14px 14px;width:calc(100% - 28px)}
+  .fRowIcon{flex:none;font-size:15px;width:20px;text-align:center}
+  .miniCopy{min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center}
+
+  /* ---- body editor: segmented Visual/HTML switcher + fullscreen mode ----
+     The biggest real mobile-editing pain point is a long HTML article stuck
+     in a short textarea under a sticky header and a sticky bottom nav. The
+     fullscreen toggle expands just this one card to fill the viewport
+     (position:fixed, same DOM nodes — the iframe is never remounted, so its
+     contenteditable listener from attachPreviewEditing() survives untouched). */
+  .bodyEditor{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:12px;margin-top:10px}
+  .bodyEditorHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .bodyEditorHead b{font-size:13px;flex:1;min-width:0}
+  .segment{display:inline-flex;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+  .segment button{border:none;background:none;color:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:650;padding:7px 11px;border-radius:8px;cursor:pointer;min-height:34px}
+  .segment button.on{background:var(--accent);color:var(--on-accent)}
+  .fsBtn{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer;min-height:34px}
+  .bodyPane{display:none}
+  .bodyPane.on{display:block}
+  .bodyPane textarea{min-height:280px}
+  .bodyPane .previewFrame{height:420px}
+  .bodyEditor.fullscreen{position:fixed;inset:0;z-index:200;border-radius:0;margin:0;display:flex;flex-direction:column;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+  .bodyEditor.fullscreen .bodyPane{flex:1;display:none;min-height:0}
+  .bodyEditor.fullscreen .bodyPane.on{display:flex;flex-direction:column}
+  .bodyEditor.fullscreen .bodyPane textarea,.bodyEditor.fullscreen .bodyPane .previewFrame{flex:1;height:auto;min-height:0}
   /* mobile is the primary target: collapse side-by-side fields on narrow phones */
   @media (max-width:420px){
     .row2{grid-template-columns:1fr}
     .previewFrame{height:300px}
+    .bodyPane .previewFrame{height:320px}
+    .bodyPane textarea{min-height:220px}
+    .bodyEditorHead b{width:100%;order:-1}
   }
   .pipeline{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:var(--card);box-shadow:var(--shadow)}
   .pipeline-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
@@ -208,6 +245,26 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
       <input type="text" id="topicBankSearch" placeholder="Search within this subject…" oninput="renderTopicBank()" style="margin-top:8px">
       <div id="topicBankList" style="margin-top:8px;max-height:280px;overflow-y:auto"></div>
       <div class="msg" id="topicBankMsg"></div>
+
+      <details style="margin-top:14px">
+        <summary>➕ Add topics to this syllabus (same CSV file question-factory/update-factory read from)</summary>
+        <div>
+          <p class="hint" style="margin-top:8px">Adds to whichever Exam source is picked above — saved topics appear in the list above next time this syllabus is loaded (including in question-factory and update-factory, same shared file).</p>
+          <label style="margin-top:4px">Subject</label>
+          <input type="text" id="tbNewSubject" list="tbSubjectSuggest" placeholder="Must match an existing subject to group correctly, or type a new one">
+          <datalist id="tbSubjectSuggest"></datalist>
+          <label>New topic</label>
+          <input type="text" id="tbNewTopic" placeholder="Topic text, exactly as it should appear">
+          <button class="btn small ghost" onclick="tryRun(addSingleTopicToBank,this)">➕ Add to list below</button>
+
+          <label style="margin-top:14px">Or bulk-add from a CSV (Subject,Topic columns)</label>
+          <input type="file" id="tbCsvUpload" accept=".csv" onchange="tryRun(()=>previewTopicCsvUpload(this))">
+          <p class="hint" style="margin-top:4px">Duplicates (same Subject+Topic, already in the syllabus or already added below) are skipped automatically.</p>
+
+          <div id="tbPendingWrap" style="margin-top:10px"></div>
+          <div class="msg" id="tbUploadMsg"></div>
+        </div>
+      </details>
     </div>
   </details>
 
@@ -235,6 +292,14 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <label>PDF URL (optional)</label>
   <input type="text" id="pdfUrl" placeholder="https://examnotespdf.in/wp-content/uploads/.../file.pdf">
   <p class="hint" style="margin-top:2px">Upload the PDF to WordPress Media Library first, then paste its link here — the published note will get a Download PDF button and an inline PDF viewer.</p>
+
+  <label>How should the AI hand back its reply?</label>
+  <select id="deliveryPref">
+    <option value="zip">Zip file (default) — AI zips everything into one file; falls back to .txt, then chat, if it can't zip</option>
+    <option value="txt">Plain .txt file — skip zip, ask for one .txt file directly; falls back to chat if it can't make a file</option>
+    <option value="chat">Chat text only — no file, paste the reply directly into Step 2</option>
+  </select>
+  <p class="hint" style="margin-top:2px">Controls the DELIVERY METHOD instruction baked into the built prompt. Zip and .txt both upload directly in Step 2 (<code>.zip</code>/<code>.json</code>/<code>.txt</code>/<code>.html</code> all supported) — pick .txt if a model's zip output has been unreliable, or Chat if you'd rather just paste.</p>
 
   <details style="margin-top:10px">
     <summary>📚 Reference sources for this run</summary>
@@ -300,30 +365,42 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <div class="msg" id="reviewMsg"></div>
 
-  <details class="fieldRow"><summary><span class="fLabel">Focus Keyword</span><button class="miniCopy" onclick="copyReviewField(event,'fFocusKeyword','Focus Keyword')">📋</button></summary>
-    <input type="text" id="fFocusKeyword"></details>
-  <details class="fieldRow"><summary><span class="fLabel">SEO Title</span><button class="miniCopy" onclick="copyReviewField(event,'fSeoTitle','SEO Title')">📋</button></summary>
-    <input type="text" id="fSeoTitle"></details>
-  <details class="fieldRow"><summary><span class="fLabel">URL Slug</span><button class="miniCopy" onclick="copyReviewField(event,'fSlug','URL Slug')">📋</button></summary>
-    <input type="text" id="fSlug"></details>
-  <details class="fieldRow"><summary><span class="fLabel">Meta Description</span><button class="miniCopy" onclick="copyReviewField(event,'fMetaDescription','Meta Description')">📋</button></summary>
-    <textarea id="fMetaDescription" style="min-height:70px;font-family:inherit;font-size:14px"></textarea></details>
-  <details class="fieldRow"><summary><span class="fLabel">H1</span><button class="miniCopy" onclick="copyReviewField(event,'fH1','H1')">📋</button></summary>
-    <input type="text" id="fH1"></details>
-  <details class="fieldRow"><summary><span class="fLabel">Featured Image — ALT Text</span><button class="miniCopy" onclick="copyReviewField(event,'fImageAltText','Image ALT Text')">📋</button></summary>
-    <input type="text" id="fImageAltText"></details>
-  <details class="fieldRow"><summary><span class="fLabel">Featured Image — Generation Prompt</span><button class="miniCopy" onclick="copyReviewField(event,'fImagePrompt','Image Generation Prompt')">📋</button></summary>
-    <textarea id="fImagePrompt" style="min-height:70px;font-family:inherit;font-size:14px"></textarea></details>
+  <div class="fieldCard">
+    <details class="fieldRow"><summary><span class="fRowIcon">🔑</span><span class="fLabel">Focus Keyword</span><button class="miniCopy" onclick="copyReviewField(event,'fFocusKeyword','Focus Keyword')">📋</button></summary>
+      <input type="text" id="fFocusKeyword"></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">🏷️</span><span class="fLabel">SEO Title</span><button class="miniCopy" onclick="copyReviewField(event,'fSeoTitle','SEO Title')">📋</button></summary>
+      <input type="text" id="fSeoTitle"></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">🔗</span><span class="fLabel">URL Slug</span><button class="miniCopy" onclick="copyReviewField(event,'fSlug','URL Slug')">📋</button></summary>
+      <input type="text" id="fSlug"></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">📝</span><span class="fLabel">Meta Description</span><button class="miniCopy" onclick="copyReviewField(event,'fMetaDescription','Meta Description')">📋</button></summary>
+      <textarea id="fMetaDescription" style="min-height:70px;font-family:inherit;font-size:14px"></textarea></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">📰</span><span class="fLabel">H1</span><button class="miniCopy" onclick="copyReviewField(event,'fH1','H1')">📋</button></summary>
+      <input type="text" id="fH1"></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">🖼️</span><span class="fLabel">Featured Image — ALT Text</span><button class="miniCopy" onclick="copyReviewField(event,'fImageAltText','Image ALT Text')">📋</button></summary>
+      <input type="text" id="fImageAltText"></details>
+    <details class="fieldRow"><summary><span class="fRowIcon">🎨</span><span class="fLabel">Featured Image — Generation Prompt</span><button class="miniCopy" onclick="copyReviewField(event,'fImagePrompt','Image Generation Prompt')">📋</button></summary>
+      <textarea id="fImagePrompt" style="min-height:70px;font-family:inherit;font-size:14px"></textarea></details>
+  </div>
 
-  <details class="fieldRow"><summary><span class="fLabel">Notes body HTML — <span id="bodyWords">0</span> words</span><button class="miniCopy" onclick="copyReviewField(event,'fBodyHtml','Notes body HTML')">📋</button></summary>
-    <textarea id="fBodyHtml" style="min-height:220px" oninput="updatePreview()"></textarea></details>
+  <div class="bodyEditor" id="bodyEditorCard">
+    <div class="bodyEditorHead">
+      <b>📄 Notes body — <span id="bodyWords">0</span> words</b>
+      <div class="segment">
+        <button type="button" id="segVisualBtn" class="on" onclick="setBodyEditMode('visual')">👁 Visual</button>
+        <button type="button" id="segHtmlBtn" onclick="setBodyEditMode('html')">✍️ HTML</button>
+      </div>
+      <button type="button" class="miniCopy" onclick="copyReviewField(event,'fBodyHtml','Notes body HTML')">📋</button>
+      <button type="button" class="fsBtn" id="fsToggleBtn" onclick="toggleBodyFullscreen()">⤢</button>
+    </div>
+    <p class="hint" style="margin:0 0 8px" id="bodyEditorHint">✏️ Tap inside and edit like a document — changes sync back automatically.</p>
+    <div class="bodyPane on" id="paneVisual"><iframe class="previewFrame" id="previewFrame" sandbox="allow-same-origin" title="Notes body preview"></iframe></div>
+    <div class="bodyPane" id="paneHtml"><textarea id="fBodyHtml" oninput="updatePreview()"></textarea></div>
+  </div>
 
-  <details class="fieldRow"><summary><span class="fLabel">Publisher-only notes (SEO linking recs + mnemonics archive)</span><button class="miniCopy" onclick="copyReviewField(event,'fPublisherNotes','Publisher notes')">📋</button></summary>
-    <textarea id="fPublisherNotes" style="min-height:160px"></textarea></details>
-
-  <label>Preview (how the notes body will render)</label>
-  <p class="hint" style="margin-top:0">✏️ Click inside the preview to edit it directly, like a document — your changes sync back into the HTML above automatically.</p>
-  <iframe class="previewFrame" id="previewFrame" sandbox="allow-same-origin" title="Notes body preview"></iframe>
+  <div class="fieldCard" style="margin-top:14px">
+    <details class="fieldRow"><summary><span class="fRowIcon">🗒️</span><span class="fLabel">Publisher-only notes</span><button class="miniCopy" onclick="copyReviewField(event,'fPublisherNotes','Publisher notes')">📋</button></summary>
+      <textarea id="fPublisherNotes" style="min-height:160px"></textarea></details>
+  </div>
 
   <fieldset style="margin-top:16px">
     <legend>🛡️ Rank Math validation gate</legend>
@@ -504,6 +581,8 @@ const TOPIC_BANK_SOURCES = window.TopicBankSources
   : (console.error('shared/topic-bank-sources.js failed to load — Topic bank is unavailable.'), {});
 let topicBankRows = null; // lazy-loaded, cached per selected source for the rest of this session
 let topicBankLoadedSource = null;
+let topicBankRawText = null; // the exact fetched CSV text — kept so additions can be appended as new lines instead of re-serializing (and risking reformatting) every existing row
+let pendingTopicAdditions = []; // staged {subjectLabel, topic} rows, not yet pushed to GitHub
 
 // Minimal RFC4180-ish CSV line splitter — handles quoted fields containing
 // commas (the topic-title columns have plenty), which these CSVs rely on.
@@ -542,7 +621,9 @@ async function loadTopicBank(sourceKey){
   const source = TOPIC_BANK_SOURCES[sourceKey];
   const res = await fetch(source.url);
   if(!res.ok) throw new Error('HTTP '+res.status);
-  topicBankRows = parseTopicBankCsv(await res.text());
+  const text = await res.text();
+  topicBankRows = parseTopicBankCsv(text);
+  topicBankRawText = text;
   topicBankLoadedSource = sourceKey;
   return topicBankRows;
 }
@@ -564,6 +645,9 @@ async function loadTopicBankForSource(sourceKey){
       + subjects.map(s => `<option value="${s}">${s} (${rows.filter(r=>r.subjectLabel===s).length})</option>`).join('');
     document.getElementById('topicBankSubject').value = '';
     document.getElementById('topicBankSearch').value = '';
+    document.getElementById('tbSubjectSuggest').innerHTML = subjects.map(s => `<option value="${s.replace(/"/g,'&quot;')}">`).join('');
+    pendingTopicAdditions = []; // a different source's topic list is a different file — don't carry staged adds across
+    renderPendingTopicAdditions();
     renderTopicBank();
     show(msg('topicBankMsg'),'ok', rows.length+' topics available — pick a subject above.');
   }catch(e){
@@ -592,6 +676,114 @@ async function renderTopicBank(){
       }).join('')
     : '<p class="hint">No topics match.</p>';
 }
+
+/* ---------- Topic bank: add new topics (writes back to the real CSV in the repo) ----------
+   Stages {subjectLabel, topic} rows locally first (so a bad CSV upload or a typo
+   can be removed before anything is written), then a single "push" serializes
+   them as new lines appended to the ORIGINAL fetched CSV text (topicBankRawText)
+   — existing rows are never reformatted/re-parsed-and-rebuilt, only added to —
+   and writes that back via the same githubPutFile()/token-unlock mechanism Step
+   4 already uses to save notes. This file is shared (topic-bank-sources.js) —
+   an addition here shows up in question-factory/update-factory's topic bank
+   too, next time THEY fetch it. */
+function isDuplicateTopic(subjectLabel, topic){
+  const norm = s => s.trim().toLowerCase();
+  const existing = (topicBankRows||[]).some(r => norm(r.subjectLabel)===norm(subjectLabel) && norm(r.topic)===norm(topic));
+  const staged = pendingTopicAdditions.some(r => norm(r.subjectLabel)===norm(subjectLabel) && norm(r.topic)===norm(topic));
+  return existing || staged;
+}
+function stageTopicAddition(subjectLabel, topic){
+  subjectLabel = (subjectLabel||'').trim(); topic = (topic||'').trim();
+  if(!subjectLabel || !topic) return { ok:false, reason:'Both Subject and Topic are required.' };
+  if(isDuplicateTopic(subjectLabel, topic)) return { ok:false, reason:'Already in the syllabus or already added below: "'+topic+'"' };
+  pendingTopicAdditions.push({ subjectLabel, topic });
+  renderPendingTopicAdditions();
+  return { ok:true };
+}
+function addSingleTopicToBank(){
+  if(!topicBankLoadedSource){ show(msg('tbUploadMsg'),'bad','Pick an Exam source above first.'); return; }
+  const subjectEl = document.getElementById('tbNewSubject');
+  const topicEl = document.getElementById('tbNewTopic');
+  const r = stageTopicAddition(subjectEl.value, topicEl.value);
+  if(!r.ok){ show(msg('tbUploadMsg'),'bad',r.reason); return; }
+  topicEl.value = '';
+  show(msg('tbUploadMsg'),'ok','Added to the list below — review it, then push when ready.');
+}
+function previewTopicCsvUpload(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(!topicBankLoadedSource){ show(msg('tbUploadMsg'),'bad','Pick an Exam source above first.'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    let rows;
+    try{ rows = parseTopicBankCsv(String(reader.result||'')); }
+    catch(e){ show(msg('tbUploadMsg'),'bad','Could not read that CSV: '+e.message); return; }
+    let added = 0, skipped = 0;
+    for(const r of rows){
+      const res = stageTopicAddition(r.subjectLabel, r.topic);
+      if(res.ok) added++; else skipped++;
+    }
+    show(msg('tbUploadMsg'), added ? 'ok' : 'warn', `${added} new topic(s) staged below, ${skipped} skipped as duplicates. Nothing is saved yet — review the list, then push.`);
+    input.value = '';
+  };
+  reader.onerror = () => show(msg('tbUploadMsg'),'bad','Could not read that file — try again.');
+  reader.readAsText(file, 'utf-8');
+}
+function removePendingTopicAddition(idx){
+  pendingTopicAdditions.splice(idx,1);
+  renderPendingTopicAdditions();
+}
+function renderPendingTopicAdditions(){
+  const wrap = document.getElementById('tbPendingWrap');
+  if(!wrap) return;
+  if(!pendingTopicAdditions.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<p class="hint" style="margin-top:0">'+pendingTopicAdditions.length+' topic(s) staged, not yet saved:</p>'
+    + pendingTopicAdditions.map((r,i) => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:13px"><b>${r.subjectLabel.replace(/</g,'&lt;')}</b> — ${r.topic.replace(/</g,'&lt;')}</span>
+        <button class="miniCopy" onclick="removePendingTopicAddition(${i})" title="Remove">✕</button>
+      </div>`).join('')
+    + `<button class="btn small" onclick="tryRun(pushTopicBankAdditions,this)">🚀 Save ${pendingTopicAdditions.length} new topic(s) to GitHub</button>`;
+}
+// Appends new rows as new lines at the end of the ORIGINAL fetched CSV text —
+// existing rows pass through completely untouched (never re-escaped/reordered).
+// Continues the S.No. column (assumed to be column 0, true of every Topic Bank
+// CSV today — see parseTopicBankCsv's header comment) from whatever the
+// highest existing number is, rather than trusting line count.
+function appendRowsToCsv(rawText, newRows){
+  const csvEscape = v => /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  let lines = rawText.replace(/^﻿/,'').split(/\r?\n/);
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  let maxSno = 0;
+  for(let i=1;i<lines.length;i++){
+    const n = parseInt(splitCsvLine(lines[i])[0], 10);
+    if(!isNaN(n) && n > maxSno) maxSno = n;
+  }
+  const newLines = newRows.map((r,i) => [maxSno+i+1, r.subjectLabel, r.topic].map(csvEscape).join(','));
+  return lines.concat(newLines).join('\r\n') + '\r\n';
+}
+async function pushTopicBankAdditions(){
+  const m = msg('tbUploadMsg');
+  if(!pendingTopicAdditions.length){ show(m,'bad','Nothing staged to save.'); return; }
+  const token = sessionStorage.getItem('ghUnlockedToken');
+  if(!token){ show(m,'bad','Unlock saving above first (enter the app password), then try again.'); return; }
+  const source = TOPIC_BANK_SOURCES[topicBankLoadedSource];
+  const updatedCsv = appendRowsToCsv(topicBankRawText, pendingTopicAdditions);
+  show(m,'warn','Saving '+pendingTopicAdditions.length+' topic(s) to GitHub…');
+  try{
+    const path = source.csvPath.split('/').map(encodeURIComponent).join('/');
+    await githubPutFile(GH_OWNER, GH_REPO, token, path, updatedCsv, `Add ${pendingTopicAdditions.length} topic(s) to ${source.label}`);
+    topicBankRows = topicBankRows.concat(pendingTopicAdditions);
+    topicBankRawText = updatedCsv;
+    const addedCount = pendingTopicAdditions.length;
+    pendingTopicAdditions = [];
+    renderPendingTopicAdditions();
+    renderTopicBank();
+    show(m,'ok',`Saved ${addedCount} topic(s) to ${source.label}'s CSV — they're in the list above now too. question-factory/update-factory will pick them up next time they load this syllabus (may take a minute via raw.githubusercontent.com's cache).`);
+  }catch(e){
+    show(m,'bad','Save failed: '+e.message);
+  }
+}
+
 function useTopicBankRow(idx){
   const r = topicBankRows && topicBankRows[idx];
   if(!r) return;
@@ -1106,7 +1298,7 @@ function clearShareBlock(containerId){
 /* ================= STEP 1 — build prompt ================= */
 var masterPromptText = null;
 var builtPromptText = null;
-var state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null };
+var state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null };
 
 function updateLangMixLabel(){
   const hindi = document.getElementById('hindiPercent').value;
@@ -1188,18 +1380,39 @@ function clearUpdateMode(){
   const badge = document.getElementById('updateBadge'); if(badge) badge.style.display = 'none';
 }
 
-function outputContract(){
+// DELIVERY METHOD wording per state.deliveryPref — 'zip' (default) asks for a
+// zip first same as always; 'txt' skips zip entirely (most real replies are
+// one block anyway, and a plain .txt needs no extraction on upload); 'chat'
+// skips file-creation altogether or an AI that insists on a file. Upload in
+// Step 2 handles .zip/.json/.txt/.html either way, so this only changes what
+// the AI is asked to do, not what the tool can accept.
+function deliveryMethodBlock(pref){
+  if(pref === 'txt'){
+    return `Reader is likely on MOBILE, where copying a long reply is unreliable. Deliver as a file,
+in order: 1) can make a single file ("file"/"canvas")? → everything below (all
+blocks/markers/fences, unchanged) as ONE \`.txt\` file, one short chat confirmation only,
+no paste. 2) no single-file capability but can zip? → same content as ONE file inside a
+\`.zip\`. 3) no file capability? → output directly in chat, unchanged. Never split the
+difference — whole, one of the three.`;
+  }
+  if(pref === 'chat'){
+    return `Output everything directly in the chat reply, unchanged — no file, no zip, no
+canvas. The person will paste your reply directly into Step 2.`;
+  }
+  return `Reader is likely on MOBILE, where copying a long reply is unreliable. Deliver as a file,
+in order: 1) can zip? → everything below (all blocks/markers/fences, unchanged) as ONE
+file inside a \`.zip\`, one short chat confirmation only, no paste. 2) no zip but can make
+a single file ("file"/"canvas")? → same content as ONE \`.txt\` file. 3) no file capability?
+→ output directly in chat, unchanged. Never split the difference — whole, one of the three.`;
+}
+function outputContract(deliveryPref){
   return `
 
 === PIPELINE OUTPUT CONTRACT (read after finishing everything above — mandatory, additive only) ===
 Everything above still applies in full. This contract only wraps your answer in sentinel markers so a script can extract the pieces — it changes nothing about what you write, only how it's packaged at the end.
 
 === DELIVERY METHOD — CHECK FIRST ===
-Reader is likely on MOBILE, where copying a long reply is unreliable. Deliver as a file,
-in order: 1) can zip? → everything below (all blocks/markers/fences, unchanged) as ONE
-file inside a \`.zip\`, one short chat confirmation only, no paste. 2) no zip but can make
-a single file ("file"/"canvas")? → same content as ONE \`.txt\` file. 3) no file capability?
-→ output directly in chat, unchanged. Never split the difference — whole, one of the three.
+${deliveryMethodBlock(deliveryPref)}
 
 If MULTI-PART DELIVERY above applies, this still governs delivery FORMAT (file vs. chat) for each reply; MULTI-PART DELIVERY governs how the blocks below split ACROSS replies.
 
@@ -1337,7 +1550,9 @@ async function buildPrompt(){
   const examType = [...document.querySelectorAll('.examChk:checked')].map(c=>c.value).join(' / ') || 'CTET Paper I';
   const subject = document.getElementById('subject').value;
   const hindiPercent = parseInt(document.getElementById('hindiPercent').value, 10);
+  const deliveryPref = document.getElementById('deliveryPref').value || 'zip';
   state.topic = topic; state.examType = examType; state.subject = subject; state.hindiPercent = hindiPercent;
+  state.deliveryPref = deliveryPref;
   saveDraft();
 
   let masterTemplate = await loadMasterPrompt();
@@ -1384,7 +1599,7 @@ LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}%
 === END RUN CONFIGURATION — THE FULL MASTER PROMPT FOLLOWS BELOW, UNCHANGED ===
 
 `;
-  const footer = outputContract();
+  const footer = outputContract(deliveryPref);
 
   // Assembles + assembler-trims one candidate given which optional blocks to
   // include. PROMPT ASSEMBLER selects/trims Master Prompt modules for this
@@ -1533,8 +1748,13 @@ async function copyWholePrompt(btn){
 function stripFences(s){
   s = String(s||'').trim();
   // remove every fence line anywhere in the block: safe because our own content
-  // never legitimately contains a line that is only ``` or ```lang
-  s = s.replace(/^```[a-zA-Z]*\s*$/gm,'');
+  // never legitimately contains a line that is only ``` or ```lang. Allow
+  // optional whitespace between the backticks and the language tag — some
+  // models (confirmed: a real reply) write "``` json" / "``` html" with a
+  // space, which still renders as a fenced block but didn't match this regex,
+  // leaving the stray fence line in front of the JSON/HTML and breaking
+  // JSON.parse downstream.
+  s = s.replace(/^```\s*[a-zA-Z]*\s*$/gm,'');
   return s.trim();
 }
 function slugify(s){
@@ -1562,7 +1782,8 @@ function extractSEO(raw){
     try{ return { seo: JSON.parse(stripFences(m[1])), method:'sentinel-json' }; }catch(e){ /* fall through */ }
   }
   // 2) any ```json fence whose parsed object looks like our SEO shape
-  const jsonFenceRe = /```json([\s\S]*?)```/gi;
+  // (same space-tolerance fix as stripFences() — "``` json" must still match)
+  const jsonFenceRe = /```\s*json([\s\S]*?)```/gi;
   while((m = jsonFenceRe.exec(raw))){
     try{
       const obj = JSON.parse(m[1].trim());
@@ -2240,6 +2461,7 @@ function restoreDraftIfAny(){
   document.getElementById('subject').value = state.subject || 'Auto-detect';
   document.getElementById('hindiPercent').value = state.hindiPercent || 70;
   updateLangMixLabel();
+  document.getElementById('deliveryPref').value = state.deliveryPref || 'zip';
   if(state.validation && state.validation.result) renderValidationResults(state.validation.result);
   updatePublishGate();
 }
@@ -2302,6 +2524,30 @@ function updatePreview(){
   const text = state.bodyHtml.replace(/<[^>]+>/g,' ');
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   document.getElementById('bodyWords').textContent = words.toLocaleString();
+}
+// Visual/HTML segmented switcher for the body editor — both panes always
+// stay mounted (just display:none'd), so the iframe's contenteditable
+// listener from attachPreviewEditing() is never re-attached or lost, and
+// nothing about the save/validate/publish pipeline (which reads #fBodyHtml
+// or state.bodyHtml) needs to know or care which pane is currently visible.
+function setBodyEditMode(mode){
+  const visual = mode === 'visual';
+  document.getElementById('paneVisual').classList.toggle('on', visual);
+  document.getElementById('paneHtml').classList.toggle('on', !visual);
+  document.getElementById('segVisualBtn').classList.toggle('on', visual);
+  document.getElementById('segHtmlBtn').classList.toggle('on', !visual);
+  document.getElementById('bodyEditorHint').textContent = visual
+    ? '✏️ Tap inside and edit like a document — changes sync back automatically.'
+    : '🔤 Editing the raw HTML directly — switch to Visual to see it rendered.';
+  if(visual) updatePreview(); // picks up anything typed in the HTML pane since the last sync
+}
+function toggleBodyFullscreen(){
+  const card = document.getElementById('bodyEditorCard');
+  const btn = document.getElementById('fsToggleBtn');
+  const goingFullscreen = !card.classList.contains('fullscreen');
+  card.classList.toggle('fullscreen', goingFullscreen);
+  btn.textContent = goingFullscreen ? '✕' : '⤢';
+  btn.title = goingFullscreen ? 'Exit fullscreen' : 'Fullscreen editor';
 }
 ['fFocusKeyword','fSeoTitle','fSlug','fMetaDescription','fH1','fImageAltText','fImagePrompt','fPublisherNotes'].forEach(id=>{
   document.addEventListener('DOMContentLoaded', ()=>{
@@ -2417,6 +2663,7 @@ async function autoSaveToGithub(btn){
     renderShareBlock('integrityShare', integrity.issues.map(i=>'• '+i).join('\n'), true);
     if(healBtn) healBtn.style.display = '';
     cur = 2; render();
+    setBodyEditMode('html'); // the field about to be focused lives in the HTML pane — switch to it first, or scrollIntoView/focus silently no-op on a display:none textarea
     const field = document.getElementById('fBodyHtml');
     if(field){ field.scrollIntoView({behavior:'smooth', block:'center'}); field.focus(); }
     return;
@@ -2510,8 +2757,10 @@ async function addToQueue(btn){
   saveQueueList(q);
   show(m,'ok',`Added "${state.seo.slug}" to the batch queue (${q.length} queued). Start the next note at Step 1, or post the queue when everyone's done.`);
   clearDraft();
-  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null };
+  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null };
   clearUpdateMode(); // otherwise the next note silently starts in "update mode" (stale oldSeo/oldBodyHtml/wordpress) with the old file name and success banner still showing
+  document.getElementById('bodyEditorCard').classList.remove('fullscreen');
+  setBodyEditMode('visual');
   cur = 0; render();
 }
 async function postQueue(btn){
@@ -2744,7 +2993,7 @@ Image Gen Prompt:    ${state.seo.imagePrompt || ''}`;
 }
 function resetAll(){
   if(!confirm('Clear this note and start over?')) return;
-  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null };
+  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null };
   clearUpdateMode(); // same reason as addToQueue() — otherwise stale oldSeo/oldBodyHtml/wordpress and the old "Loaded ... for update" banner survive into the fresh note
   accumulatedRaw = '';
   clearDraft();
@@ -2754,6 +3003,8 @@ function resetAll(){
   document.getElementById('pStats').innerHTML='';
   document.getElementById('hindiPercent').value = 70;
   updateLangMixLabel();
+  document.getElementById('bodyEditorCard').classList.remove('fullscreen'); // otherwise the next note's Step 3 would silently open already-fullscreen
+  setBodyEditMode('visual');
   cur=0; render();
 }
 
