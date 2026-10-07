@@ -1,0 +1,60 @@
+{
+  "id": "life-skills-functional-independence-dsssb-notes-2026",
+  "type": "note",
+  "topic": "Life Skills, Self-Care and Functional Independence",
+  "subject": "Auto-detect",
+  "exam": "DSSSB",
+  "flavour": "exam-trap-first",
+  "concepts_taught": [
+    "Functional Independence Definition",
+    "Activities of Daily Living (ADL)",
+    "Instrumental Activities of Daily Living (IADL)",
+    "Task Analysis",
+    "Forward Chaining",
+    "Backward Chaining",
+    "Total Task Presentation",
+    "Prompting Hierarchy",
+    "Prompt Fading",
+    "WHO Core Life Skills"
+  ],
+  "misconceptions_used": [
+    "Confusing Eating (ADL) with Cooking (IADL)",
+    "Thinking Backward Chaining means doing the steps in reverse physical order"
+  ],
+  "examples_used": [
+    "Washing hands (Task analysis)",
+    "Putting on a shirt (Backward chaining)",
+    "Buying milk (IADL)",
+    "Child in wheelchair needing a ramp (Modified independence)"
+  ],
+  "pedagogical_strategy": "Concept -> Real-life Example -> Exam Trap -> Practice Question",
+  "article_shape": [
+    "core-concept",
+    "adl-vs-iadl",
+    "task-analysis",
+    "chaining-concept",
+    "prompting-fading",
+    "who-life-skills",
+    "practice-questions",
+    "rapid-revision"
+  ],
+  "question_types": [
+    "Scenario",
+    "Classification",
+    "Assertion-Reason",
+    "Sequencing",
+    "Error-Spotting",
+    "Word-Problem",
+    "Matching",
+    "Case-Based",
+    "Comparison"
+  ],
+  "sources": [
+    "Rehabilitation Council of India (RCI)",
+    "NCERT",
+    "World Health Organization (WHO)"
+  ],
+  "postId": "635",
+  "link": "https://examnotespdf.in/?post_type=free_notes&p=635",
+  "published": "2026-10-07T13:01:38Z"
+}
