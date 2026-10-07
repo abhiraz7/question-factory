@@ -172,10 +172,15 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 <!-- STEP 1 -->
 <section class="step show" id="step0">
   <h2>1 · Pick a published post, review it, then patch it</h2>
-  <p class="hint">Every published note and long post lives here, from both factories, in one list. Pick one, then work through two prompts below: first a <b>review</b> that audits the article for real problems (never rewrites it), then an <b>update</b> that patches only the flags you approve — good content is never touched. The URL/slug and the WordPress post never change; this always updates the SAME live post.</p>
 
-  <label>Search by title, or paste an exact WordPress post ID</label>
-  <input type="text" id="pubSearch" placeholder="e.g. Algebra, or 200" oninput="renderPublishedList()">
+  <label>Exam</label>
+  <select id="pubExamFilter" onchange="onPubExamFilterChange()">
+    <option value="">Pick an exam to load its posts…</option>
+  </select>
+  <label style="margin-top:8px">Subject</label>
+  <select id="pubSubjectFilter" onchange="renderPublishedList()" style="margin-top:8px">
+    <option value="">All subjects in this exam</option>
+  </select>
   <div class="row2" style="margin-top:8px">
     <select id="pubTypeFilter" onchange="renderPublishedList()">
       <option value="all">All content types</option>
@@ -573,45 +578,80 @@ async function loadPublishedList(btn){
   items.sort((a,b) => (b.publishedAt||'').localeCompare(a.publishedAt||''));
   publishedItems = items;
   show(m, items.length ? 'ok' : 'warn', items.length ? `Loaded ${items.length} published post(s).` : 'No published posts found — check the GitHub connection.');
+  populatePubExamOptions();
+  populatePubSubjectOptions();
   renderPublishedList();
 }
 
+// Exam/Subject dropdowns are populated from whatever is actually in
+// publishedItems (not a static list) — so a new exam/subject shows up here
+// automatically after the next "Refresh list", never hand-maintained.
+function escAttr(s){ return escBlockTitle(s).replace(/"/g,'&quot;'); }
+function populatePubExamOptions(){
+  const sel = document.getElementById('pubExamFilter');
+  const prev = sel.value;
+  const exams = [...new Set((publishedItems||[]).map(it => it.examType || '(No exam set)'))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = '<option value="">Pick an exam to load its posts…</option>' + exams.map(e => `<option value="${escAttr(e)}">${escBlockTitle(e)}</option>`).join('');
+  if(exams.includes(prev)) sel.value = prev;
+}
+function populatePubSubjectOptions(){
+  const examFilter = document.getElementById('pubExamFilter').value;
+  const sel = document.getElementById('pubSubjectFilter');
+  const prev = sel.value;
+  const subjects = examFilter
+    ? [...new Set((publishedItems||[]).filter(it => (it.examType||'(No exam set)')===examFilter).map(it => it.subject || '(No subject set)'))].sort((a,b)=>a.localeCompare(b))
+    : [];
+  sel.innerHTML = '<option value="">All subjects in this exam</option>' + subjects.map(s => `<option value="${escAttr(s)}">${escBlockTitle(s)}</option>`).join('');
+  if(subjects.includes(prev)) sel.value = prev;
+}
+function onPubExamFilterChange(){
+  populatePubSubjectOptions();
+  renderPublishedList();
+}
+
+// Posts only render once an Exam is picked — "load everything, let the
+// person search" was replaced by "scope to an exam first" so the list stays
+// short and exam/subject never scroll out of view the way free-text search
+// let them.
 function renderPublishedList(){
   const wrap = document.getElementById('pubListWrap');
   if(!publishedItems){ wrap.innerHTML = '<div class="hint" style="padding:12px">Tap "Refresh list" above to load published posts.</div>'; return; }
-  const q = (document.getElementById('pubSearch').value||'').trim().toLowerCase();
+  const examFilter = document.getElementById('pubExamFilter').value;
+  const subjectFilter = document.getElementById('pubSubjectFilter').value;
   const typeFilter = document.getElementById('pubTypeFilter').value;
+  if(!examFilter){ wrap.innerHTML = '<div class="hint" style="padding:12px">Pick an exam above to load its posts.</div>'; return; }
   const rows = publishedItems.filter(it=>{
     if(typeFilter!=='all' && it.contentType!==typeFilter) return false;
-    if(!q) return true;
-    return it.title.toLowerCase().includes(q) || String(it.postId)===q || it.slug.toLowerCase().includes(q);
+    if((it.examType||'(No exam set)') !== examFilter) return false;
+    if(subjectFilter && (it.subject||'(No subject set)') !== subjectFilter) return false;
+    return true;
   });
   if(!rows.length){ wrap.innerHTML = '<div class="hint" style="padding:12px">No matches.</div>'; return; }
 
-  // Grouped by exam type (the examType string the note/long-post was
-  // generated with — e.g. "DSSSB", "CTET Paper I / CTET Paper II") instead of
-  // one flat chronological list, so posts from the same exam sit together.
-  // examType now shows as the group header rather than repeated per row.
+  // Grouped by subject only while "All subjects in this exam" is picked —
+  // once a single subject is chosen there is nothing left to group by.
   const groups = new Map();
   for(const it of rows){
-    const key = it.examType || '(No exam set)';
+    const key = subjectFilter || (it.subject || '(No subject set)');
     if(!groups.has(key)) groups.set(key, []);
     groups.get(key).push(it);
   }
   const sortedKeys = [...groups.keys()].sort((a,b) => a.localeCompare(b));
+  const showGroupHeaders = !subjectFilter && sortedKeys.length > 1;
 
   wrap.innerHTML = sortedKeys.map(key => {
     const items = groups.get(key);
     const rowsHtml = items.map(it => {
       const idx = publishedItems.indexOf(it);
-      const badge = it.contentType==='note' ? 'Note' : 'Long Post';
       const updated = it.updatedAt ? it.updatedAt.slice(0,10) : '';
       return `<div class="noteRow pubRow" style="flex-direction:column;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer" data-idx="${idx}" onclick="tryRun(()=>selectPublishedItem(${idx}))">
-        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b><span class="chip">${badge}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b></div>
         <div class="hint" style="margin:2px 0 0">#${it.postId} · ${escBlockTitle(it.subject)} · ${it.wordCount.toLocaleString()} words${updated ? ` · updated ${updated}` : ''}</div>
       </div>`;
     }).join('');
-    return `<div style="padding:7px 12px;background:var(--card-2);font-weight:650;font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line-soft);position:sticky;top:0;z-index:1">${escBlockTitle(key)} <span style="font-weight:500">(${items.length})</span></div>${rowsHtml}`;
+    return showGroupHeaders
+      ? `<div style="padding:7px 12px;background:var(--card-2);font-weight:650;font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line-soft);position:sticky;top:0;z-index:1">${escBlockTitle(key)} <span style="font-weight:500">(${items.length})</span></div>${rowsHtml}`
+      : rowsHtml;
   }).join('');
 }
 // Selection feedback lives on the row itself (a highlighted/active state)
@@ -3671,9 +3711,17 @@ loadPublishedList().then(()=>{
   if(!wantSlug || !publishedItems) return;
   const idx = publishedItems.findIndex(it => it.slug === wantSlug);
   if(idx === -1){
-    show(msg('pubListMsg'),'warn',`Came from a duplicate-topic check for "${wantSlug}", but that slug isn't in the published list here (it may be a long-post, or not yet synced) — search for it manually below.`);
+    show(msg('pubListMsg'),'warn',`Came from a duplicate-topic check for "${wantSlug}", but that slug isn't in the published list here (it may be a long-post, or not yet synced) — pick its exam above manually.`);
     return;
   }
+  // Set the Exam/Subject dropdowns to match so the list actually shows
+  // (and highlights) the deep-linked post instead of sitting on the
+  // "pick an exam" empty state.
+  const found = publishedItems[idx];
+  document.getElementById('pubExamFilter').value = found.examType || '(No exam set)';
+  populatePubSubjectOptions();
+  document.getElementById('pubSubjectFilter').value = '';
+  renderPublishedList();
   selectPublishedItem(idx);
 });
 restoreDraftIfAny();
