@@ -125,12 +125,14 @@ it for the real upload before publish.
 
 Palette (fixed accents, vary labels per card, never hardcoded): H2 `#0f172a`/white, plain
 text — no emoji by default, it reads as spam, one only where genuinely the clearest icon.
-TOC `#eff6ff`/`#2563eb` border. Left-border cards (`border-left:6px solid
-[accent];padding:16px;border-radius:12px`) — Definition `#2563eb` · Tip `#f59e0b` · Exam
-Point `#06b6d4` · Question `#e11d48` · Memory Trick `#7c3aed` · Mistake `#ea580c` ·
-Summary `#65a30d` · Rapid Revision dashed `#2563eb` · Advanced Insight `#9333ea` ·
-Updates `#16a34a`. **Vary card titles** — not every Definition card literally titled
-"Definition."
+TOC `#eff6ff`/`#2563eb` border. Left-border cards need BOTH a tinted background AND the
+border (`background:[tint];border-left:6px solid [accent];padding:16px;border-radius:12px`
+— border-left alone on a plain/white background reads as flat and bland, not a card) —
+Definition `#2563eb`/bg `#eff6ff` · Tip `#f59e0b`/bg `#fffbeb` · Exam Point `#06b6d4`/bg
+`#ecfeff` · Question `#e11d48`/bg `#fff1f2` · Memory Trick `#7c3aed`/bg `#faf5ff` ·
+Mistake `#ea580c`/bg `#fff7ed` · Summary `#65a30d`/bg `#f7fee7` · Rapid Revision dashed
+`#2563eb`/bg `#eff6ff` · Advanced Insight `#9333ea`/bg `#faf5ff` · Updates `#16a34a`/bg
+`#f0fdf4`. **Vary card titles** — not every Definition card literally titled "Definition."
 
 SVGs (0–6, only if clearer than prose, hand-drawn): `viewBox="0 0 360 H" width="100%"`,
 white card, `role="img"` + real `aria-label`, unique marker ids, node text ≤26 chars.

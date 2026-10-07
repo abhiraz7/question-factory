@@ -193,6 +193,14 @@ function vCheckPipelineArtifacts(bodyHtml, seo){
   // page's renderer didn't know — i.e. the fetched prompt and this loaded tool are
   // different versions. Hard-fail rather than publish a wall of raw JSON to readers.
   if(/"kind"\s*:\s*"(grid|flow|timeline|bars|comparison|tree)"/i.test(proseOnly)) offenders.push('raw chart JSON leaked into the body — the prompt and this tool are out of sync (this page does not know the {* chart *} block type; reload it)');
+  // Confirmed real, live example: `{C("Teacher decision loop","<p>...</p>","#16a34a")}`
+  // shipped as literal visible text — an invented macro/function-call-looking
+  // placeholder standing in for a real card, never expanded by anything
+  // (HARD BAN 7 in the master prompt). Generalizes past the old {* type *}
+  // block-tag pattern, which this same check already implicitly covers via
+  // the `[A-Za-z][A-Za-z0-9_]*\(` shape.
+  const macroMatch = html.match(/\{[A-Za-z][A-Za-z0-9_]*\([^)]*\)\}/);
+  if(macroMatch) offenders.push(`invented macro-like placeholder instead of real HTML (e.g. "${macroMatch[0].slice(0,60)}")`);
   // The "block title still starts with a type keyword" check (e.g. a card
   // literally titled "chart: ...") was removed here -- it only made sense
   // for the OLD {* type: title *} block-tag system, where a failed parse
@@ -209,11 +217,34 @@ function vCheckPipelineArtifacts(bodyHtml, seo){
     pass: offenders.length===0, detail: offenders.length ? offenders.join('; ') : 'clean' };
 }
 
+function vCheckTagBalance(bodyHtml){
+  const VOID_ELEMENTS_FOR_BALANCE = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  const body = String(bodyHtml||'');
+  const stack = [];
+  const tagRe = /<\/?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/g;
+  const offenders = [];
+  let m;
+  while((m = tagRe.exec(body))){
+    const full = m[0]; const name = m[1].toLowerCase();
+    if(full.startsWith('<!') || VOID_ELEMENTS_FOR_BALANCE.has(name) || full.endsWith('/>')) continue;
+    if(full.startsWith('</')){
+      if(stack.length && stack[stack.length-1]===name){ stack.pop(); continue; }
+      const idx = stack.lastIndexOf(name);
+      if(idx===-1) offenders.push(`</${name}> with no matching open <${name}>`);
+      else { offenders.push(`<${stack[idx+1]||name}> never closed — a later </${name}> closed it instead`); stack.length = idx; }
+    } else stack.push(name);
+  }
+  if(stack.length) offenders.push(`${stack.length} tag(s) never closed by the end: <${stack.join('>, <')}>`);
+  return { id:'tag-balance', label:'Every opened tag is properly closed (no swallowed </p>/</div>)', tier:'hard',
+    pass: offenders.length===0, detail: offenders.length ? offenders.join('; ') : 'clean' };
+}
+
 function vRunChecks(seo, bodyHtml){
   seo = seo || {};
   const doc = vParseBody(bodyHtml);
   const checks = [
     vCheckPipelineArtifacts(bodyHtml, seo),
+    vCheckTagBalance(bodyHtml),
     vCheckImageAlt(doc, seo.focusKeyword),
     vCheckParagraphs(doc), vCheckLinks(doc), vCheckDuplicateIds(doc), vCheckBareH3(doc),
     vCheckScriptTags(doc), vCheckCitations(doc), vCheckToc(doc), vCheckAdSlots(doc),
