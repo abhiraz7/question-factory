@@ -47,6 +47,13 @@ jobs:
           # full label list). Labels with no mapping here are skipped with a warning
           # rather than auto-creating a stray near-duplicate term — add a line here
           # once you decide what term a new label should map to.
+          #
+          # Two confirmed, fixed bugs in this map (same ones fixed in pub-note.yml's
+          # twin table — see that file's comment for detail): DSSSB used to map to
+          # "DSSSB PRT" (mislabeling every generic DSSSB note as PRT specifically,
+          # when a plain "DSSSB" term already exists for this case); BPSC TRE used
+          # to map to "BPSC TRE" (no such term exists — the real one is "BPSC TRE 4",
+          # so this was silently creating a duplicate term every publish).
           declare -A EXAM_TERM_MAP=(
             ["CTET Paper I"]="CTET"
             ["CTET Paper II"]="CTET"
@@ -54,9 +61,9 @@ jobs:
             ["TGT"]="TGT"
             ["KVS"]="KVS"
             ["NVS"]="NVS"
-            ["DSSSB"]="DSSSB PRT"
+            ["DSSSB"]="DSSSB"
             ["UPTET"]="UPTET"
-            ["BPSC TRE"]="BPSC TRE"
+            ["BPSC TRE"]="BPSC TRE 4"
           )
           declare -A SUBJECT_TERM_MAP=(
             ["CDP"]="Child Development & Pedagogy"
@@ -84,9 +91,10 @@ jobs:
             lc="$(echo "$label" | tr '[:upper:]' '[:lower:]')"
             case "$lc" in
               *ctet*) echo "CTET" ;;
-              *bpsc*tre*|*bihar*tre*) echo "BPSC TRE" ;;
+              *bpsc*tre*|*bihar*tre*) echo "BPSC TRE 4" ;;
               *dsssb*tgt*) echo "DSSSB TGT" ;;
-              *dsssb*prt*|*dsssb*) echo "DSSSB PRT" ;;
+              *dsssb*prt*) echo "DSSSB PRT" ;;
+              *dsssb*) echo "DSSSB" ;;
               *uptet*) echo "UPTET" ;;
               *up*tgt*) echo "UP TGT" ;;
               *kvs*) echo "KVS" ;;
