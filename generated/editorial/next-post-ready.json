@@ -15,111 +15,111 @@
         "id": "BPSC TRE::EVS",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.451784451157061,
-        "totalScore": 1.951784451157061
+        "explorationBonus": 1.4543065830262891,
+        "totalScore": 1.9543065830262891
       },
       {
         "id": "CTET Paper I / CTET Paper II::Geography",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.451784451157061,
-        "totalScore": 1.951784451157061
+        "explorationBonus": 1.4543065830262891,
+        "totalScore": 1.9543065830262891
       },
       {
         "id": "CTET Paper I / CTET Paper II::Hindi",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.451784451157061,
-        "totalScore": 1.951784451157061
+        "explorationBonus": 1.4543065830262891,
+        "totalScore": 1.9543065830262891
       },
       {
         "id": "CTET Paper I::English",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.451784451157061,
-        "totalScore": 1.951784451157061
+        "explorationBonus": 1.4543065830262891,
+        "totalScore": 1.9543065830262891
       },
       {
         "id": "BPSC TRE::Auto-detect",
         "exploitScore": 0.5,
         "timesUsed": 2,
-        "explorationBonus": 1.1853770406137756,
-        "totalScore": 1.6853770406137756
+        "explorationBonus": 1.1874363526616492,
+        "totalScore": 1.6874363526616492
       },
       {
         "id": "CTET Paper I / CTET Paper II / UPTET::Maths",
         "exploitScore": 0.5,
         "timesUsed": 2,
-        "explorationBonus": 1.1853770406137756,
-        "totalScore": 1.6853770406137756
+        "explorationBonus": 1.1874363526616492,
+        "totalScore": 1.6874363526616492
       },
       {
         "id": "CTET Paper I::Auto-detect",
         "exploitScore": 0.5,
         "timesUsed": 2,
-        "explorationBonus": 1.1853770406137756,
-        "totalScore": 1.6853770406137756
+        "explorationBonus": 1.1874363526616492,
+        "totalScore": 1.6874363526616492
       },
       {
         "id": "CTET Paper I / CTET Paper II::CDP",
         "exploitScore": 0.5,
         "timesUsed": 3,
-        "explorationBonus": 1.026566630234348,
-        "totalScore": 1.526566630234348
+        "explorationBonus": 1.0283500467821258,
+        "totalScore": 1.5283500467821258
       },
       {
         "id": "CTET Paper I::CDP",
         "exploitScore": 0.5,
         "timesUsed": 3,
-        "explorationBonus": 1.026566630234348,
-        "totalScore": 1.526566630234348
+        "explorationBonus": 1.0283500467821258,
+        "totalScore": 1.5283500467821258
       },
       {
         "id": "BPSC TRE::Hindi",
         "exploitScore": 0.5,
         "timesUsed": 5,
-        "explorationBonus": 0.8381881436808423,
-        "totalScore": 1.3381881436808423
+        "explorationBonus": 0.8396442971944729,
+        "totalScore": 1.3396442971944729
       },
       {
         "id": "DSSSB::History",
         "exploitScore": 0.5,
         "timesUsed": 5,
-        "explorationBonus": 0.8381881436808423,
-        "totalScore": 1.3381881436808423
+        "explorationBonus": 0.8396442971944729,
+        "totalScore": 1.3396442971944729
       },
       {
         "id": "CTET Paper I / CTET Paper II::EVS",
         "exploitScore": 0.5,
         "timesUsed": 7,
-        "explorationBonus": 0.7258922255785305,
-        "totalScore": 1.2258922255785305
+        "explorationBonus": 0.7271532915131446,
+        "totalScore": 1.2271532915131447
       },
       {
         "id": "CTET Paper I / CTET Paper II::Maths",
         "exploitScore": 0.5,
         "timesUsed": 8,
-        "explorationBonus": 0.6843777534895653,
-        "totalScore": 1.1843777534895654
+        "explorationBonus": 0.6855666978547506,
+        "totalScore": 1.1855666978547506
       },
       {
         "id": "CTET Paper I / CTET Paper II::Auto-detect",
         "exploitScore": 0.5,
         "timesUsed": 9,
-        "explorationBonus": 0.6492577442928823,
-        "totalScore": 1.1492577442928824
+        "explorationBonus": 0.6503856759544449,
+        "totalScore": 1.1503856759544449
       },
       {
         "id": "DSSSB::Auto-detect",
         "exploitScore": 0.5,
-        "timesUsed": 15,
-        "explorationBonus": 0.513283315117174,
-        "totalScore": 1.013283315117174
+        "timesUsed": 16,
+        "explorationBonus": 0.4988230427048903,
+        "totalScore": 0.9988230427048903
       }
     ]
   },
   "confidence": 0,
-  "generatedAt": "2026-10-05T09:39:34.536Z",
+  "generatedAt": "2026-10-07T13:02:00.152Z",
   "mode": "recommend-only",
   "humanActionNeeded": "No topic backlog data source exists in this repo yet (checked Automation/wp-structure/*.tsv — that is WordPress course/subject taxonomy, not a content backlog). Re-run with --topic \"...\" --subject \"...\" --exam \"...\" once a specific next topic is chosen, or wire a real topic backlog into this script. See this session's EDITORIAL_INTELLIGENCE_PROGRESS_REPORT.md."
 }
