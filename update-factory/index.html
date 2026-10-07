@@ -99,6 +99,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .previewFrame{width:100%;height:360px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
   .noteRow{display:flex;gap:8px;align-items:center;margin:4px 0}
   .noteRow input[type=checkbox]{width:auto}
+  .pubRow.selected{background:var(--accent-bg);border-left:4px solid var(--accent);padding-left:8px}
   .copyRow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
   .copyRow:last-child{border-bottom:none}
   .copyRow .cLabel{font-weight:600;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
@@ -244,14 +245,16 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <input type="range" id="hindiPercent" min="0" max="100" step="5" value="70" oninput="updateLangMixLabel()">
   </div></details>
 
-  <fieldset style="margin-top:14px">
-    <legend>📚 Reference sources (optional)</legend>
-    <p class="hint" style="margin-top:0">Not fetched automatically — these are just handed to the AI as supporting material to ground the rewrite against, alongside whatever it already knows. Leave blank to skip.</p>
-    <label>Reference corpus (NCERT chapter text already in this repo)</label>
-    <input type="text" id="refCorpusUrl" placeholder="https://github.com/bugignore/question-factory/tree/main/Automation/ncert-knowledge-base/by-subject">
-    <label>Optional source URLs (one per line — official NCERT/exam-body pages, etc.)</label>
-    <textarea id="refSourceUrls" style="min-height:70px" placeholder="https://ncert.nic.in/...&#10;https://ctet.nic.in/..."></textarea>
-  </fieldset>
+  <details style="margin-top:14px">
+    <summary>📚 Reference sources (optional)</summary>
+    <div>
+      <p class="hint" style="margin-top:8px">Not fetched automatically — these are just handed to the AI as supporting material to ground the rewrite against, alongside whatever it already knows. Leave blank to skip.</p>
+      <label>Reference corpus (NCERT chapter text already in this repo)</label>
+      <input type="text" id="refCorpusUrl" placeholder="https://github.com/bugignore/question-factory/tree/main/Automation/ncert-knowledge-base/by-subject">
+      <label>Optional source URLs (one per line — official NCERT/exam-body pages, etc.)</label>
+      <textarea id="refSourceUrls" style="min-height:70px" placeholder="https://ncert.nic.in/...&#10;https://ctet.nic.in/..."></textarea>
+    </div>
+  </details>
 
   <fieldset style="margin-top:14px">
     <legend>🔍 1a · Review first — find what's actually wrong</legend>
@@ -287,7 +290,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <fieldset id="filePickWrap" style="display:none;margin-top:14px">
     <legend>Manual file picker (only needed if the automatic load above failed)</legend>
-    <p class="hint" style="margin-top:0">Pick <code>MASTER-PROMPT-ExamNotesPDF_v13.md</code> from the repo root — only needed when updating a Note (Long Posts don't use a separate master-prompt file).</p>
+    <p class="hint" style="margin-top:0">Pick <code>MASTER-PROMPT-ExamNotesPDF_v16.md</code> from the repo root — only needed when updating a Note (Long Posts don't use a separate master-prompt file).</p>
     <input type="file" id="masterPromptFile" accept=".md">
   </fieldset>
 </section>
@@ -441,6 +444,14 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
      mirrored by gen-flavour-engine-browser.mjs) — window.FlavourEngine.
      buildFlavourBlock() below falls back to plain text if this fails to load. -->
 <script src="../shared/flavour-engine.js"></script>
+<!-- Shared Editorial Intelligence (Automation/core/src/editorial-intelligence.mjs,
+     mirrored by gen-editorial-intelligence-browser.mjs) — window.EditorialIntelligence.
+     buildEditorialSignatureBlock() below falls back to plain text if this fails to load. -->
+<script src="../shared/editorial-intelligence.js"></script>
+<!-- BM25 (Automation/core/src/bm25.mjs, mirrored to shared/bm25.js) — window.BM25.
+     Used only by buildInternalLinksBlock() below to rank real published posts
+     against the topic; degrades to '' on failure, same contract as notes-factory. -->
+<script src="../shared/bm25.js"></script>
 <!-- Prompt Assembler (Automation/core/src/master-prompt-modules.mjs +
      prompt-assembler.mjs, mirrored by gen-prompt-assembler-browser.mjs) —
      window.PromptAssembler, shared with notes-factory/long-post-factory. -->
@@ -549,6 +560,11 @@ async function loadPublishedList(btn){
           postId: data.wordpress.postId, link: data.wordpress.link || '',
           examType: data.examType || '', subject: data.subject || '',
           publishedAt: data.wordpress.publishedAt || data.createdAt || '',
+          // updatedAt is new (buildBundle() below now stamps it on every save
+          // through this tool) — older bundles saved before this existed fall
+          // back to whatever timestamp is available, so the list never shows
+          // a blank "updated" date, just the best honest guess it has.
+          updatedAt: data.updatedAt || data.wordpress.publishedAt || data.createdAt || '',
           wordCount: bodyWordCount(data.bodyHtml), data };
       }catch(e){ return null; }
     }));
@@ -571,14 +587,41 @@ function renderPublishedList(){
     return it.title.toLowerCase().includes(q) || String(it.postId)===q || it.slug.toLowerCase().includes(q);
   });
   if(!rows.length){ wrap.innerHTML = '<div class="hint" style="padding:12px">No matches.</div>'; return; }
-  wrap.innerHTML = rows.map((it,i)=>{
-    const idx = publishedItems.indexOf(it);
-    const badge = it.contentType==='note' ? 'Note' : 'Long Post';
-    return `<div class="noteRow" style="flex-direction:column;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer" onclick="tryRun(()=>selectPublishedItem(${idx}))">
-      <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b><span class="chip">${badge}</span></div>
-      <div class="hint" style="margin:2px 0 0">#${it.postId} · ${escBlockTitle(it.examType)} · ${escBlockTitle(it.subject)} · ${it.wordCount.toLocaleString()} words · ${it.publishedAt ? it.publishedAt.slice(0,10) : ''}</div>
-    </div>`;
+
+  // Grouped by exam type (the examType string the note/long-post was
+  // generated with — e.g. "DSSSB", "CTET Paper I / CTET Paper II") instead of
+  // one flat chronological list, so posts from the same exam sit together.
+  // examType now shows as the group header rather than repeated per row.
+  const groups = new Map();
+  for(const it of rows){
+    const key = it.examType || '(No exam set)';
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  const sortedKeys = [...groups.keys()].sort((a,b) => a.localeCompare(b));
+
+  wrap.innerHTML = sortedKeys.map(key => {
+    const items = groups.get(key);
+    const rowsHtml = items.map(it => {
+      const idx = publishedItems.indexOf(it);
+      const badge = it.contentType==='note' ? 'Note' : 'Long Post';
+      const updated = it.updatedAt ? it.updatedAt.slice(0,10) : '';
+      return `<div class="noteRow pubRow" style="flex-direction:column;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer" data-idx="${idx}" onclick="tryRun(()=>selectPublishedItem(${idx}))">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b><span class="chip">${badge}</span></div>
+        <div class="hint" style="margin:2px 0 0">#${it.postId} · ${escBlockTitle(it.subject)} · ${it.wordCount.toLocaleString()} words${updated ? ` · updated ${updated}` : ''}</div>
+      </div>`;
+    }).join('');
+    return `<div style="padding:7px 12px;background:var(--card-2);font-weight:650;font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line-soft);position:sticky;top:0;z-index:1">${escBlockTitle(key)} <span style="font-weight:500">(${items.length})</span></div>${rowsHtml}`;
   }).join('');
+}
+// Selection feedback lives on the row itself (a highlighted/active state)
+// instead of a separate "Selected: ..." message elsewhere on the page —
+// immediate and in-context, and survives re-renders of the list (e.g.
+// typing in the search box) since it's re-applied here, not just set once.
+function highlightSelectedPubRow(idx){
+  document.querySelectorAll('#pubListWrap .pubRow').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.idx === String(idx));
+  });
 }
 
 function selectPublishedItem(idx){
@@ -611,7 +654,7 @@ function selectPublishedItem(idx){
   if(corpusField && !corpusField.value.trim()){
     corpusField.value = `https://github.com/${GH_OWNER}/${GH_REPO}/tree/main/Automation/ncert-knowledge-base/by-subject`;
   }
-  show(msg('pubSelectedMsg'),'ok', `Selected "${old.seo.slug}" (${it.contentType==='note'?'Note':'Long Post'}, WordPress post #${it.postId}). Review the fields below, then tap "Build update prompt".`);
+  highlightSelectedPubRow(idx);
 }
 
 /* ================= Direct WYSIWYG edit (skips the AI prompt round-trip) =================
@@ -638,7 +681,6 @@ function editPublishedDirectly(idx){
   state.featuredImage = null;
   cur = 2;
   render();
-  show(msg('pubSelectedMsg'),'ok', `Editing "${old.seo.slug}" directly — skipped the AI prompt step. Use the preview below like a document, then Auto-save when ready.`);
 }
 
 /* ---------- Topic bank (syllabus browsing, published-only) ----------
@@ -737,10 +779,13 @@ function renderTopicBank(){
     .filter(r => r.subjectLabel === subj && (!q || r.topic.toLowerCase().includes(q)))
     .map(r => ({...r, pubIdx: findPublishedIndexForTopic(source.examMatch, r.topic)}))
     .filter(r => r.pubIdx !== -1); // unpublished topics don't belong in an UPDATE tool — they show up in notes-factory/question-factory's create-flow topic bank instead
+  // Whole row is tappable (same pattern as the main published-posts list
+  // above) instead of a separate "Edit" button — one less precise target to
+  // hit on mobile, and consistent with how the rest of this page's lists work.
   listEl.innerHTML = rows.length
-    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer" onclick="tryRun(()=>editPublishedDirectly(${r.pubIdx}))">
         <span style="flex:1;font-size:13px">${r.topic.replace(/</g,'&lt;')}</span>
-        <button class="btn small ghost" onclick="tryRun(()=>editPublishedDirectly(${r.pubIdx}))">✏️ Edit</button>
+        <span style="color:var(--ink-soft);font-size:14px;flex:none">✏️</span>
       </div>`).join('')
     : '<p class="hint">No published topics in this subject yet.</p>';
 }
@@ -1023,6 +1068,100 @@ async function buildFlavourBlock(topic, examType, subject){
   }catch(e){ return FLAVOUR_ENGINE_FALLBACK_TEXT; }
 }
 
+/* The following block (excerptFor through buildEditorialSignatureBlock) is
+   ported from notes-factory/index.html's identical functions, so that NOTE
+   UPDATES get the same editorial-signature/internal-links/variety features
+   as fresh notes instead of silently dropping them. That file is never
+   edited from here — keep both copies in lockstep if either changes. */
+function excerptFor(text, maxLen){
+  const t = String(text||'').replace(/\s+/g,' ').trim();
+  if(t.length <= maxLen) return t;
+  return t.slice(0, maxLen).trim() + '…';
+}
+
+async function buildInternalLinksBlock(topic, subject, examType){
+  if(!window.BM25) return '';
+  let posts = [];
+  try{
+    const base = 'https://examnotespdf.in/wp-json/wp/v2/free_notes?status=publish&per_page=100&_fields=slug,link,title';
+    let page = 1;
+    let totalPages = 1;
+    while(page <= totalPages && page <= 5){
+      const res = await fetch(`${base}&page=${page}`);
+      if(!res.ok) break;
+      const tp = Number(res.headers.get('X-WP-TotalPages'));
+      if(tp) totalPages = tp;
+      const batch = await res.json();
+      if(!Array.isArray(batch) || !batch.length) break;
+      posts = posts.concat(batch);
+      page++;
+    }
+  }catch(e){ return ''; }
+  if(!posts.length) return '';
+
+  const queryTerms = new Set(window.BM25.tokenize(`${topic} ${subject||''} ${examType||''}`));
+  const scored = posts.map(p => {
+    const title = (p.title && (p.title.rendered || p.title)) || '';
+    const titleTerms = window.BM25.tokenize(title);
+    const overlap = titleTerms.filter(t => queryTerms.has(t)).length;
+    return { title: excerptFor(title, 70), link: p.link, overlap };
+  }).filter(p => p.link && p.title);
+  scored.sort((a,b) => b.overlap - a.overlap);
+  const top = scored.slice(0, 6);
+  if(!top.length) return '';
+
+  const lines = top.map(p => `- ${p.title}: ${p.link}`).join('\n');
+  return `
+
+## INTERNAL LINKS TO USE — real, currently-live URLs on this site
+Weave ${top.length >= 6 ? 'all of' : 'as many as fit naturally from'} these into the
+body as contextual anchor text (not a bare list). Do NOT invent any other internal
+link or slug.
+${lines}`;
+}
+
+const OPENING_STYLE_FALLBACK_TEXT = 'Open this note with whichever hook (a question, a real fact, a classroom scenario, a plain definition, or a common misconception) genuinely suits this topic best, and vary it from your last note on this exam.';
+async function buildEditorialVarietyBlock(topic, examType, subject){
+  try{
+    if(!window.FlavourEngine) return OPENING_STYLE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    return window.FlavourEngine.buildEditorialVarietyBlock({ topic, exam: examType, subject }, recent);
+  }catch(e){ return OPENING_STYLE_FALLBACK_TEXT; }
+}
+
+const EDITORIAL_SIGNATURE_FALLBACK_TEXT = '(No history available this run — write normally, as if this section were not here.)';
+let learnedStateCache = null;
+async function loadLearnedState(){
+  if(learnedStateCache) return learnedStateCache;
+  try{
+    const res = await fetch(`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/generated/editorial/learned-state.json`);
+    learnedStateCache = res.ok ? await res.json() : { byExamSubject:{} };
+  }catch(e){ learnedStateCache = { byExamSubject:{} }; }
+  return learnedStateCache;
+}
+async function buildEditorialSignatureBlock(topic, examType, subject){
+  try{
+    if(!window.EditorialIntelligence) return EDITORIAL_SIGNATURE_FALLBACK_TEXT;
+    const recent = await loadRecentContentMemory();
+    const sig = window.EditorialIntelligence.buildEditorialSignature({ topic, exam: examType, subject }, recent);
+    const learned = await loadLearnedState();
+    const pairState = learned.byExamSubject && learned.byExamSubject[`${examType}::${subject}`];
+    const structuralNote = pairState && pairState.recentStructures && pairState.recentStructures.structuralRepetitiveness > 0.6
+      ? `This exam+subject's recent notes reuse a similar section-shape/skeleton quite often (repetitiveness ${pairState.recentStructures.structuralRepetitiveness} of 1) — vary the section order/rhythm meaningfully, don't default to the same skeleton.`
+      : '';
+    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.avoidCardSentences.length && !sig.underusedMisconceptions.length && !structuralNote){
+      return `(confidence: ${sig.confidence} — no meaningful history yet for this exam+subject. Write normally, as if this section were not here.)`;
+    }
+    const lines = [`(confidence: ${sig.confidence})`];
+    if(structuralNote) lines.push(structuralNote);
+    if(sig.avoidConcepts.length) lines.push(`Recently covered concepts for this exam+subject (vary your treatment rather than repeating the same framing): ${sig.avoidConcepts.join('; ')}`);
+    if(sig.avoidExamples.length) lines.push(`Recently used examples for this exam+subject (prefer a different example if one fits as well): ${sig.avoidExamples.join('; ')}`);
+    if(sig.avoidCardSentences.length) lines.push(`Aside/callout card sentences already used verbatim recently for this exam+subject — do not reuse these exact sentences, write a fresh one for the same point: ${sig.avoidCardSentences.map(s=>'"'+s+'"').join('; ')}`);
+    if(sig.underusedMisconceptions.length) lines.push(`Misconceptions for this exam+subject not addressed recently (worth considering if genuinely relevant to TOPIC): ${sig.underusedMisconceptions.join('; ')}`);
+    return lines.join('\n');
+  }catch(e){ return EDITORIAL_SIGNATURE_FALLBACK_TEXT; }
+}
+
 async function buildLongPostPrompt(topic, examType, subject, hindiPercent, year){
   const profile = getExamProfile(examType);
   const seed = Array.from(topic+examType).reduce((a,c)=>a+c.charCodeAt(0),0) % 999 + 1;
@@ -1261,7 +1400,7 @@ CONTENT MEMORY sentinel present, valid JSON, all 7 fields filled honestly?      
    never edited, this is a copy) ================= */
 async function loadMasterPrompt(){
   if(masterPromptText) return masterPromptText;
-  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v13.md'];
+  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v16.md'];
   let lastErr;
   for(const url of candidates){
     try{
@@ -1274,7 +1413,7 @@ async function loadMasterPrompt(){
   const hint = location.protocol === 'file:'
     ? 'This page was opened straight from the folder (file://), where browsers block reading other files automatically.'
     : 'Could not load the master prompt file from the repo root ('+(lastErr?lastErr.message:'')+').';
-  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v13.md manually — then tap "Build update prompt" again.');
+  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v16.md manually — then tap "Build update prompt" again.');
 }
 function notesOutputContract(){
   return `
@@ -1364,6 +1503,18 @@ function getTeachingLevel(examTypeRaw){
   if (hasAny('paper ii','paper 2')) return 'Upper Primary/Secondary (Class 6–10)';
   return 'Not explicitly stated — infer the most likely level from TOPIC/SUBJECT/EXAM TYPE context and state your inference once';
 }
+// Ported from notes-factory/index.html's identical const/function — fills
+// MASTER-PROMPT-ExamNotesPDF_v16.md's {{TEACHING_LEVEL_DETAIL}} slot.
+const TEACHING_LEVEL_DETAIL = {
+  'Primary (Class 1–5)': '**Primary (1–5)**: 6–10yo, concrete, FLN/NIPUN.',
+  'Upper Primary/Secondary (Class 6–10)': '**Upper Primary/Secondary (6–10)**: NCERT 6–10 depth.',
+  'Senior Secondary (Class 11–12)': '**Senior Secondary (11–12)/PGT**: NCERT 11–12 rigor, abstract reasoning.',
+};
+function getTeachingLevelDetail(examType){
+  const level = getTeachingLevel(examType);
+  if(TEACHING_LEVEL_DETAIL[level]) return TEACHING_LEVEL_DETAIL[level];
+  return Object.values(TEACHING_LEVEL_DETAIL).join(' ');
+}
 // Used by the embedded buildLongPostPrompt() copy below (long-post-factory's
 // own file has an identical function — keep both in lockstep if this changes).
 function buildTeachingLevelBlock(examType){
@@ -1416,7 +1567,7 @@ CHECK FOR EVERY ONE OF THESE (this site's own known, previously-shipped failure 
 10. Casual AI-chatbot voice instead of textbook register — coaching-class filler (तो/अच्छा/चलिए/देखिए), chatty direct address outside a card, or a leftover "ये free notes हैं"/paywall-disclaimer line that has no reason to be there.
 11. Exam-trap-first framing — opens by teaching how to beat the exam instead of teaching the concept itself; the exam angle should be one aside, never the note's organizing voice.
 12. Breaking the fourth wall — "as an AI," "I don't have live browsing," or any other sentence narrating its own restrictions instead of just writing the content.
-13. Orphan citations/references — a `<sup>` with no matching Reference, a Reference nothing in the body actually cites, or a generic reference block (e.g. NCF/NEP/RTE) kept regardless of whether this specific topic ever drew from it.
+13. Orphan citations/references — a \`<sup>\` with no matching Reference, a Reference nothing in the body actually cites, or a generic reference block (e.g. NCF/NEP/RTE) kept regardless of whether this specific topic ever drew from it.
 14. No real visual for a concept that clearly has a process/hierarchy/cycle/cause-effect relationship worth drawing, or a visual that's purely decorative and teaches nothing.
 15. No real internal links to other notes on this site, or any internal/external link that looks fabricated rather than found.
 16. Unnatural/calque Hindi — a sentence that reads like English translated word-for-word rather than something a Hindi-medium teacher would actually say (e.g. a Schedule "देती है" instead of "होती है").
@@ -1566,7 +1717,15 @@ async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
   // below, `refs + base`), so filling both would duplicate the section.
   master = master.replace('{{REFERENCE_SOURCES_BLOCK}}', '');
   master = master.replaceAll('{{TEACHING_LEVEL}}', getTeachingLevel(examType));
+  master = master.replace('{{TEACHING_LEVEL_DETAIL}}', getTeachingLevelDetail(examType));
   master = master.replace('{{FLAVOUR_ENGINE_BLOCK}}', await buildFlavourBlock(topic, examType, subject));
+  master = master.replace('{{EDITORIAL_VARIETY_BLOCK}}', await buildEditorialVarietyBlock(topic, examType, subject));
+  master = master.replace('{{EDITORIAL_SIGNATURE_BLOCK}}', await buildEditorialSignatureBlock(topic, examType, subject));
+  // RAG EVIDENCE DISABLED FOR NOW — same decision/reasons as notes-factory/
+  // index.html's buildPrompt() (Hindi-only NCERT corpus + a known source
+  // text-corruption bug); re-enable only after both are fixed there.
+  master = master.replace('{{EVIDENCE_BLOCK}}', '');
+  master = master.replace('{{INTERNAL_LINKS_BLOCK}}', await buildInternalLinksBlock(topic, subject, examType));
 
   // PROMPT ASSEMBLER — same shared function notes-factory/long-post-factory
   // use. tool:'notes' (not a separate 'update-note' id) because a note
@@ -2642,7 +2801,13 @@ function buildBundle(){
     topic: state.topic, examType: state.examType, subject: state.subject, targetYear: 2026,
     hindiPercent: state.hindiPercent,
     seo: state.seo, bodyHtml: state.bodyHtml, publisherNotes: state.publisherNotes,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    // Distinct from createdAt above (which this tool has always stamped with
+    // "now" on every save, including updates — so it was never really a true
+    // creation date for an edited article anyway). updatedAt is the
+    // unambiguous one: it only ever means "this save happened at X," which is
+    // exactly what the published-list UI's "updated" column needs.
+    updatedAt: new Date().toISOString(),
   };
   if(state.wordpress) bundle.wordpress = state.wordpress;
   // Feeds Automation/content-memory/ — an update overwrites the article's
