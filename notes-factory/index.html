@@ -315,7 +315,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <button class="btn ghost" onclick="tryRun(copyWholePrompt,this)">🖥️ Copy whole prompt (PC only)</button>
   <div class="msg" id="pMsg"></div>
   <div id="filePickWrap" style="display:none">
-    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v15.md</code> in the folder above this one:</label>
+    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v16.md</code> in the folder above this one:</label>
     <input type="file" id="masterPromptFile" accept=".md,.txt">
   </div>
   <textarea id="promptOut" style="display:none"></textarea>
@@ -1307,7 +1307,7 @@ function updateLangMixLabel(){
 
 async function loadMasterPrompt(){
   if(masterPromptText) return masterPromptText;
-  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v15.md'];
+  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v16.md'];
   let lastErr;
   for(const url of candidates){
     try{
@@ -1321,7 +1321,7 @@ async function loadMasterPrompt(){
   const hint = location.protocol === 'file:'
     ? 'This page was opened straight from the folder (file://), where browsers block reading other files automatically.'
     : 'Could not load the master prompt file from the repo root ('+(lastErr?lastErr.message:'')+').';
-  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v15.md manually — then tap "Build & copy prompt" again.');
+  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v16.md manually — then tap "Build & copy prompt" again.');
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1529,17 +1529,51 @@ async function buildEditorialVarietyBlock(topic, examType, subject){
    best-effort network call is a smaller/safer change tonight than altering
    an already-working function's signature. */
 const EDITORIAL_SIGNATURE_FALLBACK_TEXT = '(No history available this run — write normally, as if this section were not here.)';
+// Best-effort fetch of generate-learned-state.mjs's committed output
+// (ed-refresh.yml runs it after every publish) — the one signal Phase 1
+// cannot compute client-side (article-shape repetition/divergence; Phase
+// 6's topic-state.mjs needs RAG evidence, which needs retrieve.mjs's
+// node:fs-based index load, which can't run in a browser — see
+// shared/editorial-intelligence.js's own header). This is a single small
+// precomputed JSON someone else (the Action) already computed; the browser
+// only ever reads it, same pattern as topic-bank-sources.js/content-memory.
+// Same degrade-silently contract as every other best-effort block here: a
+// 404 (nothing published yet), a network hiccup, or a missing key for this
+// exact exam+subject pair must never block prompt generation.
+let learnedStateCache = null;
+async function loadLearnedState(){
+  if(learnedStateCache) return learnedStateCache;
+  try{
+    const res = await fetch(`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/generated/editorial/learned-state.json`);
+    learnedStateCache = res.ok ? await res.json() : { byExamSubject:{} };
+  }catch(e){ learnedStateCache = { byExamSubject:{} }; }
+  return learnedStateCache;
+}
 async function buildEditorialSignatureBlock(topic, examType, subject){
   try{
     if(!window.EditorialIntelligence) return EDITORIAL_SIGNATURE_FALLBACK_TEXT;
     const recent = await loadRecentContentMemory();
     const sig = window.EditorialIntelligence.buildEditorialSignature({ topic, exam: examType, subject }, recent);
-    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.underusedMisconceptions.length){
+    const learned = await loadLearnedState();
+    const pairState = learned.byExamSubject && learned.byExamSubject[`${examType}::${subject}`];
+    const structuralNote = pairState && pairState.recentStructures && pairState.recentStructures.structuralRepetitiveness > 0.6
+      ? `This exam+subject's recent notes reuse a similar section-shape/skeleton quite often (repetitiveness ${pairState.recentStructures.structuralRepetitiveness} of 1) — vary the section order/rhythm meaningfully, don't default to the same skeleton.`
+      : '';
+    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.avoidCardSentences.length && !sig.underusedMisconceptions.length && !structuralNote){
       return `(confidence: ${sig.confidence} — no meaningful history yet for this exam+subject. Write normally, as if this section were not here.)`;
     }
     const lines = [`(confidence: ${sig.confidence})`];
+    if(structuralNote) lines.push(structuralNote);
     if(sig.avoidConcepts.length) lines.push(`Recently covered concepts for this exam+subject (vary your treatment rather than repeating the same framing): ${sig.avoidConcepts.join('; ')}`);
     if(sig.avoidExamples.length) lines.push(`Recently used examples for this exam+subject (prefer a different example if one fits as well): ${sig.avoidExamples.join('; ')}`);
+    // card_sentences_used is populated server-side at publish time (see
+    // editorial-evaluation.mjs's --extract-cards CLI mode, wired into
+    // pub-note.yml/pub-lpost.yml) — found because 3 diagnostic test runs
+    // reproduced several aside-card sentences (Teacher Tip/Exam Point/Exam
+    // Trap) byte-for-byte identical, a repetition class avoidConcepts/
+    // avoidExamples above cannot see (they track WHICH ideas were covered,
+    // not the exact wording of generic advice cards).
+    if(sig.avoidCardSentences.length) lines.push(`Aside/callout card sentences already used verbatim recently for this exam+subject — do not reuse these exact sentences, write a fresh one for the same point: ${sig.avoidCardSentences.map(s=>'"'+s+'"').join('; ')}`);
     if(sig.underusedMisconceptions.length) lines.push(`Misconceptions for this exam+subject not addressed recently (worth considering if genuinely relevant to TOPIC): ${sig.underusedMisconceptions.join('; ')}`);
     return lines.join('\n');
   }catch(e){ return EDITORIAL_SIGNATURE_FALLBACK_TEXT; }

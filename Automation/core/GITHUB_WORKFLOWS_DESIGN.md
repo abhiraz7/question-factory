@@ -107,28 +107,40 @@ problem that does not exist yet.
 
 ## Open questions for the human (genuine judgment calls, not guessed at)
 
-1. **Topic backlog.** `generate-next-post-ready.mjs`'s recommend-only mode
-   exists because there is no "what's the next topic to write about" data
-   source anywhere in this repo today (`Automation/wp-structure/*.tsv` is
-   WordPress course/subject *taxonomy*, not a content backlog). Before
-   Phase 9/10 can produce a genuinely complete `next-post-ready.json` for
-   an unattended pipeline, something needs to supply real upcoming topics —
-   either a hand-maintained list, or a generated one (e.g. diffed against
-   `courses-created.tsv` / `bed-subjects.tsv` / `ded-subjects.tsv` subjects
-   that don't have a published note yet). This is a product decision, not a
-   technical one, and is left entirely to the repo owner.
-2. **Search Console.** Spec section 11 wants it as a learner-intent signal.
-   No credentials/integration exist in this repo today, and per this task's
-   boundaries no network/API integration was added. `topic-state.mjs`'s
-   `learner_signals` field is honestly `{ dataAvailable: false }` until this
-   is wired up — a real implementation is a separate, credentialed task.
-3. **Committing `generated/editorial/next-post-ready.json` to git.** Spec
-   section 13 implies "the next post must begin from this state" — which
-   means it needs to persist somewhere between workflow runs. Two honest
-   options: (a) commit it to the repo (simple, visible in diffs, but adds
-   noise to git history on every run), or (b) keep it as a GitHub Actions
-   artifact/cache only (no repo noise, but artifacts expire and aren't
-   directly diffable). Not decided here — a human call.
+1. ~~**Topic backlog.**~~ **RESOLVED.** `generate-next-post-ready.mjs`'s
+   recommend-only mode now reads `Automation/core/src/topic-bank-sources.mjs`
+   (the same syllabus CSV registry — `Automation/input sylabuss/*.csv` — the
+   notes-factory/question-factory/update-factory Topic Bank UIs already
+   browse) as a real topic backlog, cross-checked against content-memory to
+   exclude already-covered topics. Recommend-only mode's output now includes
+   a concrete `nextTopicSuggestion` per exam+subject pair (still requires a
+   human — or a `--topic` re-run — to commit to it; this script never
+   auto-promotes a suggestion into a decision). This also fixed a real,
+   confirmed bug the empty backlog was masking: `recommendExamSubjectPair()`
+   always called `buildTopicState({topic:'', ...})`, so RAG evidence/
+   coverage was always empty and `exploitScore` silently fell back to the
+   same neutral 0.5 for every single candidate, every run — the explore/
+   exploit ranking was never actually discriminating on real coverage data.
+   Confirmed fixed live: exploitScore now varies genuinely (0.5/0.75/0.86
+   seen across real candidates in one run) wherever a backlog topic AND real
+   RAG/NCERT coverage both exist for that subject; it stays honestly neutral
+   only where one or both are still missing (e.g. a subject with no NCERT
+   corpus mapped to it), which is correct, not a residual defect.
+2. ~~**Search Console.**~~ **RESOLVED** (Phase 11, commit `de1f53a`).
+   `gsc.mjs` wires real OAuth2 + Search Console `searchAnalytics.query`
+   credentials via `GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` +
+   `GSC_SITE_URL` env vars (added to the repo's secrets per that commit).
+   `topic-state.mjs`'s `learner_signals` stays honestly `{dataAvailable:
+   false}` only where credentials are absent or a call fails at runtime —
+   that's the intended degrade path, not an unfinished integration.
+3. ~~**Committing `generated/editorial/next-post-ready.json` to git.**~~
+   **RESOLVED** — option (a) was chosen: `ed-refresh.yml` commits it to the
+   repo after every publish. Still open, separately: nothing currently reads
+   this file back into notes-factory or any other prompt-building step (see
+   the learned-state work below, which closes part of that gap by having
+   the same workflow also emit a smaller, per-exam+subject learned-state
+   file the browser tool *does* fetch — `next-post-ready.json` itself
+   remains a human-facing artifact, not yet machine-consumed).
 
 ## What NOT to do (carried over from this session's hard boundaries)
 
