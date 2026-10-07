@@ -13,17 +13,20 @@
 // phases). Pure, deterministic, no I/O, no network, no randomness: same
 // (ctx, recentMemory) in, same signature out, every time.
 //
-// Data-quality note (read before trusting the output): as of this module's
-// first write, every record in Automation/content-memory/ has
+// Data-quality note (read before trusting the output): this module's first
+// write assumed every record in Automation/content-memory/ had
 // "derived": true (backfilled from HTML headings by
 // backfill-content-memory.mjs, never a live model-reported Content Memory
-// block) — misconceptions_used and examples_used are [] on all of them, and
-// concepts_taught is section-heading text, not extracted pedagogical
-// concepts. This function works correctly on that data, but "correctly"
-// right now mostly means "returns small/empty/low-confidence output" — it
-// is not broken, the input signal is just thin until live-recorded content
-// memory exists. `confidence` is built to reflect that honestly rather than
-// overstate it (see buildEditorialSignature's data-richness note below).
+// block), with misconceptions_used/examples_used always []. That's no
+// longer the current state — as of the last audit, 26 of 65 records are
+// live, model-reported data with real misconceptions_used/examples_used/
+// question_types populated, and that fraction only grows as more notes
+// publish. The code was written to generalize correctly either way (nothing
+// here special-cases `derived`), so this doesn't need a fix — just don't
+// trust this comment's old "all thin/derived" framing; check
+// fieldFillRate()'s actual output for current data richness instead.
+// `confidence` is built to reflect that honestly rather than overstate it
+// (see buildEditorialSignature's data-richness note below).
 
 const RECENT_WINDOW = 10; // how many recent same-exam/subject records count toward "recent" weighting — wider than flavour-engine's 5 since this scores multiple list-valued signals (concepts/examples/misconceptions), not one categorical pick
 const OVERUSE_MIN_WEIGHT = 2; // an item needs at least this much recency-weighted count before it's worth flagging as "avoid" — filters out one-off mentions
@@ -31,6 +34,57 @@ export const TOP_N = 5; // cap each output list so the eventual prompt block sta
 
 function normalizeItem(s) {
   return String(s || '').trim();
+}
+
+// Matches the note templates' own aside-card shape (Teacher Tip / Exam
+// Point / Exam Trap / Mistake / Summary / etc. — every sample across this
+// pipeline uses a `border-left:Npx solid COLOR` div as the card wrapper; a
+// Table of Contents div uses a plain `border:1px solid` instead, so it never
+// matches here even though it shares the same background/padding styling).
+// Deliberately non-greedy / no nested-div handling: every real card sample
+// seen so far is a flat `<div>...<p>...</p></div>` with no div nesting
+// inside it — if that ever changes, this needs a real HTML parser instead.
+const CARD_DIV_RE = /<div\b[^>]*style="[^"]*border-left:\s*\d+px\s+solid[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+const CARD_P_RE = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
+
+function stripTagsForCard(html) {
+  return String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Pulls the actual sentence text out of every aside/callout card in a note's
+ * body HTML — found because three diagnostic test runs (same topic/exam/
+ * flavour) reproduced several of these card sentences byte-for-byte
+ * identical, a repetition class nothing in content-memory's existing
+ * concepts_taught/examples_used/misconceptions_used fields can see (those
+ * track WHICH ideas were covered, not the exact phrasing of generic advice
+ * cards). Pure string/regex work, zero DOM APIs, so this stays safe to run
+ * both in Node (editorial-evaluation.mjs, publish workflows) and, if ever
+ * needed, in the browser mirror of this file.
+ * @param {string} bodyHtml
+ * @returns {string[]} de-duplicated (within this one article) card sentences
+ */
+export function extractCardSentences(bodyHtml) {
+  const html = String(bodyHtml || '');
+  const sentences = [];
+  CARD_DIV_RE.lastIndex = 0;
+  let divMatch;
+  while ((divMatch = CARD_DIV_RE.exec(html))) {
+    const inner = divMatch[1];
+    CARD_P_RE.lastIndex = 0;
+    let pMatch;
+    while ((pMatch = CARD_P_RE.exec(inner))) {
+      const text = stripTagsForCard(pMatch[1]);
+      if (text) sentences.push(text);
+    }
+  }
+  return [...new Set(sentences)];
 }
 
 /**
@@ -121,6 +175,7 @@ export function fieldFillRate(records, field) {
  * @returns {{
  *   avoidConcepts: string[],
  *   avoidExamples: string[],
+ *   avoidCardSentences: string[],
  *   underusedMisconceptions: string[],
  *   coverageGaps: string[],
  *   recommendedStructures: string[],
@@ -137,6 +192,15 @@ export function buildEditorialSignature(ctx = {}, recentMemory = []) {
   );
   const avoidExamples = topByWeight(
     weightedCounts(recentMatching, 'examples_used'),
+    { minWeight: OVERUSE_MIN_WEIGHT }
+  );
+  // card_sentences_used is populated server-side at publish time (see
+  // editorial-evaluation.mjs's extractCardSentences CLI mode, wired into
+  // pub-note.yml/pub-lpost.yml) — reuses the exact same generic
+  // weightedCounts/topByWeight machinery as concepts/examples above, so this
+  // needed zero new scoring logic, only a new field name.
+  const avoidCardSentences = topByWeight(
+    weightedCounts(recentMatching, 'card_sentences_used'),
     { minWeight: OVERUSE_MIN_WEIGHT }
   );
   const underusedMisconceptions = leastRecentlyUsed(
@@ -162,5 +226,5 @@ export function buildEditorialSignature(ctx = {}, recentMemory = []) {
     : 0;
   const confidence = Math.round(sampleSizeFactor * dataRichness * 100) / 100;
 
-  return { avoidConcepts, avoidExamples, underusedMisconceptions, coverageGaps, recommendedStructures, confidence };
+  return { avoidConcepts, avoidExamples, avoidCardSentences, underusedMisconceptions, coverageGaps, recommendedStructures, confidence };
 }

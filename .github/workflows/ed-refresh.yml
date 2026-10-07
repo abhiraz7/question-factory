@@ -6,16 +6,22 @@ name: ED.REFRESH
 # real .yml file without a human reviewing it first" rule — see this
 # file's git history for that review/decision.
 #
-# What this does: after a note or long post actually
-# publishes, runs the already-working, already-tested
-# generate-next-post-ready.mjs (EDITORIAL_INTELLIGENCE_ENGINE.md Phase 9/10)
-# in recommend-only mode (no --topic — there is still no topic backlog in
-# this repo, see that spec's "Open questions" in the design doc) and commits
-# its output, generated/editorial/next-post-ready.json, back to main. This
-# is the "Brain feeds the tool" half of the architecture — nothing here is
-# on any human's critical path; Notes Factory itself (notes-factory/
-# index.html) does not depend on this workflow succeeding, running on
-# time, or even existing — see buildPrompt()'s fallback for why.
+# What this does: after a note or long post actually publishes, runs two
+# already-tested scripts and commits their output back to main:
+#   1. generate-next-post-ready.mjs (Phase 9/10), recommend-only mode (no
+#      --topic). Now reads Automation/core/src/topic-bank-sources.mjs's
+#      syllabus CSVs as a real topic backlog (see the design doc's "Open
+#      questions" — item 1 is resolved), so this produces a genuine
+#      nextTopicSuggestion, not just an exam+subject ranking.
+#   2. generate-learned-state.mjs — a smaller, per-exam+subject summary
+#      (article-shape repetition, coverage) that notes-factory/index.html's
+#      buildPrompt() fetches directly (best-effort, degrades silently on
+#      failure — see buildEditorialSignatureBlock()) to enrich its live
+#      Phase-1 signature block with the one signal Phase 1 can't compute
+#      client-side without porting retrieve.mjs off node:fs.
+# This is the "Brain feeds the tool" half of the architecture — nothing here
+# is on any human's critical path; Notes Factory itself does not depend on
+# this workflow succeeding, running on time, or even existing.
 #
 # For this to actually return Search Console data (it runs fine without
 # this too — see the degrade note below), add these repo secrets
@@ -88,16 +94,19 @@ jobs:
             node Automation/core/src/generate-next-post-ready.mjs
           fi
 
-      - name: Commit updated next-post-ready.json
+      - name: Refresh per-exam+subject learned state (notes-factory reads this directly)
+        run: node Automation/core/src/generate-learned-state.mjs
+
+      - name: Commit updated editorial state
         run: |
           set -euo pipefail
-          if git diff --quiet -- generated/editorial/next-post-ready.json; then
-            echo "No change to generated/editorial/next-post-ready.json — nothing to commit."
+          if git diff --quiet -- generated/editorial/next-post-ready.json generated/editorial/learned-state.json; then
+            echo "No change to generated/editorial/ — nothing to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add generated/editorial/next-post-ready.json
+          git add generated/editorial/next-post-ready.json generated/editorial/learned-state.json
           git commit -m "Refresh editorial state [skip ci]"
           if ! git push; then
             echo "::warning::git push rejected (likely a concurrent run) — retrying once after a rebase pull."

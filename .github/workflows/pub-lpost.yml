@@ -155,12 +155,17 @@ jobs:
             local cm
             cm="$(jq -c '.contentMemory // empty' "$f" 2>/dev/null || true)"
             [ -z "$cm" ] && return 0
-            jq -n --argjson cm "$cm" --arg id "$slug" --arg topic "$(jq -r '.topic // ""' "$f")" \
+            # See pub-note.yml's twin of this line for why this is extracted
+            # server-side rather than trusted from the AI's own contentMemory block.
+            local cards
+            cards="$(node Automation/core/src/editorial-evaluation.mjs --extract-cards "$f" 2>/dev/null || echo '[]')"
+            echo "$cards" | jq -e . >/dev/null 2>&1 || cards='[]'
+            jq -n --argjson cm "$cm" --argjson cards "$cards" --arg id "$slug" --arg topic "$(jq -r '.topic // ""' "$f")" \
               --arg subject "$(jq -r '.subject // ""' "$f")" --arg exam "$(jq -r '.examType // ""' "$f")" \
               --arg type "long-post" --arg postId "$post_id" --arg link "$post_link" \
               --arg published "$(date -u +%FT%TZ)" \
               '{id:$id, type:$type, topic:$topic, subject:$subject, exam:$exam} + $cm +
-               {postId:$postId, link:$link, published:$published}' \
+               {card_sentences_used:$cards, postId:$postId, link:$link, published:$published}' \
               > "Automation/content-memory/$slug.json" 2>/dev/null || {
                 echo "::warning::$slug — failed to write content-memory record (non-fatal, publish already succeeded)."
                 return 0

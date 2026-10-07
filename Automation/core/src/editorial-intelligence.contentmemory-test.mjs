@@ -20,7 +20,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildEditorialSignature, TOP_N } from './editorial-intelligence.mjs';
+import { buildEditorialSignature, extractCardSentences, TOP_N } from './editorial-intelligence.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_MEMORY_DIR = path.resolve(__dirname, '..', '..', 'content-memory');
@@ -35,6 +35,7 @@ function isOutputShapeValid(sig) {
   return sig
     && Array.isArray(sig.avoidConcepts)
     && Array.isArray(sig.avoidExamples)
+    && Array.isArray(sig.avoidCardSentences)
     && Array.isArray(sig.underusedMisconceptions)
     && Array.isArray(sig.coverageGaps)
     && Array.isArray(sig.recommendedStructures)
@@ -117,6 +118,7 @@ async function main() {
     const sig = buildEditorialSignature({ topic: 'probe', exam, subject }, validRecords);
     if (sig.avoidConcepts.length > TOP_N) capViolations++;
     if (sig.avoidExamples.length > TOP_N) capViolations++;
+    if (sig.avoidCardSentences.length > TOP_N) capViolations++;
     if (sig.underusedMisconceptions.length > TOP_N) capViolations++;
     if (sig.coverageGaps.length > TOP_N) capViolations++;
     if (sig.recommendedStructures.length > TOP_N) capViolations++;
@@ -139,7 +141,40 @@ async function main() {
   check(`buildEditorialSignature() does not crash/misbehave on any of ${validRecords.length} real records used individually`,
     crashCount === 0, `${crashCount} failure(s)`);
 
-  // ---------- 6. Known real data-quality fact stays true (regression guard) ----------
+  // ---------- 6. Card-sentence repetition detection (the bug this signal exists to catch) ----------
+  // Directly motivated by a real finding: three diagnostic test runs (same
+  // topic/exam/flavour) reproduced several aside-card sentences byte-for-
+  // byte identical, a repetition class the pre-existing
+  // concepts_taught/examples_used/misconceptions_used fields cannot see.
+  console.log('\n=== Card-sentence repetition detection ===');
+
+  const CARD_HTML_SAMPLE = `<p>Some intro prose.</p>
+<div style="background:#fff7ed;border-left:6px solid #f59e0b;padding:16px;border-radius:12px;"><strong>Teacher Tip</strong><p>Task को learner की actual performance के अनुसार छोटे observable steps में देखें.</p></div>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;padding:16px;border-radius:12px;"><strong>Table of Contents</strong><ol><li>one</li></ol></div>
+<div style="background:#ecfeff;border-left:6px solid #06b6d4;padding:16px;"><strong>Exam Point</strong><p>Support का उद्देश्य participation और independence बढ़ाना है; adult द्वारा task पूरा करना नहीं.</p></div>`;
+  const extracted = extractCardSentences(CARD_HTML_SAMPLE);
+  check('extractCardSentences() pulls exactly the two real card sentences, not the TOC div',
+    extracted.length === 2 && extracted.includes('Task को learner की actual performance के अनुसार छोटे observable steps में देखें.'),
+    JSON.stringify(extracted));
+  check('extractCardSentences() does not treat a border:1px (non-border-left) div as a card',
+    !extracted.some(s => s.includes('Table of Contents')), JSON.stringify(extracted));
+  check('extractCardSentences() returns [] for empty/missing input', extractCardSentences('').length === 0 && extractCardSentences(undefined).length === 0);
+
+  // weightedCounts() weights by recency position (records.length - idx), most-
+  // recent-first — so "used only once" only stays below OVERUSE_MIN_WEIGHT
+  // (2) when that one use sits in the OLDEST slot of the window (weight 1);
+  // a single use anywhere nearer the front already meets the threshold, same
+  // as the existing avoidConcepts/avoidExamples behaviour this reuses.
+  const sharedSentence = 'Support का उद्देश्य participation और independence बढ़ाना है; adult द्वारा task पूरा करना नहीं.';
+  const recordA = { exam: 'TEST_EXAM_CARD', subject: 'TEST_SUBJECT_CARD', card_sentences_used: [sharedSentence] }; // idx0, weight 2
+  const recordB = { exam: 'TEST_EXAM_CARD', subject: 'TEST_SUBJECT_CARD', card_sentences_used: [sharedSentence, 'oldest-slot one-off'] }; // idx1, weight 1
+  const cardSig = buildEditorialSignature({ topic: 'probe', exam: 'TEST_EXAM_CARD', subject: 'TEST_SUBJECT_CARD' }, [recordA, recordB]);
+  check('A card sentence reused across 2 recent records is flagged in avoidCardSentences',
+    cardSig.avoidCardSentences.includes(sharedSentence), JSON.stringify(cardSig.avoidCardSentences));
+  check('A sentence used only once, in the oldest slot (weight 1 < OVERUSE_MIN_WEIGHT 2), is NOT flagged',
+    !cardSig.avoidCardSentences.includes('oldest-slot one-off'), JSON.stringify(cardSig.avoidCardSentences));
+
+  // ---------- 6b. Known real data-quality fact stays true (regression guard) ----------
   // Phase 1's header notes every current record is "derived": true with
   // empty misconceptions_used/examples_used and flavour: null. This isn't
   // asserted as something that SHOULD stay true forever (once live-recorded

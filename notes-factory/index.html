@@ -315,7 +315,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   <button class="btn ghost" onclick="tryRun(copyWholePrompt,this)">🖥️ Copy whole prompt (PC only)</button>
   <div class="msg" id="pMsg"></div>
   <div id="filePickWrap" style="display:none">
-    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v15.md</code> in the folder above this one:</label>
+    <label>Couldn't auto-load the master prompt (this happens when the page is opened straight from the folder). Pick the file manually — it's <code>MASTER-PROMPT-ExamNotesPDF_v16.md</code> in the folder above this one:</label>
     <input type="file" id="masterPromptFile" accept=".md,.txt">
   </div>
   <textarea id="promptOut" style="display:none"></textarea>
@@ -1307,7 +1307,7 @@ function updateLangMixLabel(){
 
 async function loadMasterPrompt(){
   if(masterPromptText) return masterPromptText;
-  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v15.md'];
+  const candidates = ['../MASTER-PROMPT-ExamNotesPDF_v16.md'];
   let lastErr;
   for(const url of candidates){
     try{
@@ -1321,7 +1321,7 @@ async function loadMasterPrompt(){
   const hint = location.protocol === 'file:'
     ? 'This page was opened straight from the folder (file://), where browsers block reading other files automatically.'
     : 'Could not load the master prompt file from the repo root ('+(lastErr?lastErr.message:'')+').';
-  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v15.md manually — then tap "Build & copy prompt" again.');
+  throw new Error(hint + ' Use the file picker that just appeared below the button to select MASTER-PROMPT-ExamNotesPDF_v16.md manually — then tap "Build & copy prompt" again.');
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1529,17 +1529,51 @@ async function buildEditorialVarietyBlock(topic, examType, subject){
    best-effort network call is a smaller/safer change tonight than altering
    an already-working function's signature. */
 const EDITORIAL_SIGNATURE_FALLBACK_TEXT = '(No history available this run — write normally, as if this section were not here.)';
+// Best-effort fetch of generate-learned-state.mjs's committed output
+// (ed-refresh.yml runs it after every publish) — the one signal Phase 1
+// cannot compute client-side (article-shape repetition/divergence; Phase
+// 6's topic-state.mjs needs RAG evidence, which needs retrieve.mjs's
+// node:fs-based index load, which can't run in a browser — see
+// shared/editorial-intelligence.js's own header). This is a single small
+// precomputed JSON someone else (the Action) already computed; the browser
+// only ever reads it, same pattern as topic-bank-sources.js/content-memory.
+// Same degrade-silently contract as every other best-effort block here: a
+// 404 (nothing published yet), a network hiccup, or a missing key for this
+// exact exam+subject pair must never block prompt generation.
+let learnedStateCache = null;
+async function loadLearnedState(){
+  if(learnedStateCache) return learnedStateCache;
+  try{
+    const res = await fetch(`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/generated/editorial/learned-state.json`);
+    learnedStateCache = res.ok ? await res.json() : { byExamSubject:{} };
+  }catch(e){ learnedStateCache = { byExamSubject:{} }; }
+  return learnedStateCache;
+}
 async function buildEditorialSignatureBlock(topic, examType, subject){
   try{
     if(!window.EditorialIntelligence) return EDITORIAL_SIGNATURE_FALLBACK_TEXT;
     const recent = await loadRecentContentMemory();
     const sig = window.EditorialIntelligence.buildEditorialSignature({ topic, exam: examType, subject }, recent);
-    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.underusedMisconceptions.length){
+    const learned = await loadLearnedState();
+    const pairState = learned.byExamSubject && learned.byExamSubject[`${examType}::${subject}`];
+    const structuralNote = pairState && pairState.recentStructures && pairState.recentStructures.structuralRepetitiveness > 0.6
+      ? `This exam+subject's recent notes reuse a similar section-shape/skeleton quite often (repetitiveness ${pairState.recentStructures.structuralRepetitiveness} of 1) — vary the section order/rhythm meaningfully, don't default to the same skeleton.`
+      : '';
+    if(!sig.avoidConcepts.length && !sig.avoidExamples.length && !sig.avoidCardSentences.length && !sig.underusedMisconceptions.length && !structuralNote){
       return `(confidence: ${sig.confidence} — no meaningful history yet for this exam+subject. Write normally, as if this section were not here.)`;
     }
     const lines = [`(confidence: ${sig.confidence})`];
+    if(structuralNote) lines.push(structuralNote);
     if(sig.avoidConcepts.length) lines.push(`Recently covered concepts for this exam+subject (vary your treatment rather than repeating the same framing): ${sig.avoidConcepts.join('; ')}`);
     if(sig.avoidExamples.length) lines.push(`Recently used examples for this exam+subject (prefer a different example if one fits as well): ${sig.avoidExamples.join('; ')}`);
+    // card_sentences_used is populated server-side at publish time (see
+    // editorial-evaluation.mjs's --extract-cards CLI mode, wired into
+    // pub-note.yml/pub-lpost.yml) — found because 3 diagnostic test runs
+    // reproduced several aside-card sentences (Teacher Tip/Exam Point/Exam
+    // Trap) byte-for-byte identical, a repetition class avoidConcepts/
+    // avoidExamples above cannot see (they track WHICH ideas were covered,
+    // not the exact wording of generic advice cards).
+    if(sig.avoidCardSentences.length) lines.push(`Aside/callout card sentences already used verbatim recently for this exam+subject — do not reuse these exact sentences, write a fresh one for the same point: ${sig.avoidCardSentences.map(s=>'"'+s+'"').join('; ')}`);
     if(sig.underusedMisconceptions.length) lines.push(`Misconceptions for this exam+subject not addressed recently (worth considering if genuinely relevant to TOPIC): ${sig.underusedMisconceptions.join('; ')}`);
     return lines.join('\n');
   }catch(e){ return EDITORIAL_SIGNATURE_FALLBACK_TEXT; }
@@ -3145,6 +3179,35 @@ function vCheckBareH3(doc){
   return { id:'bare-h3', label:'Every <h3> has an inline style (no bare h3)', tier:'hard', pass: bare.length===0,
     detail: `${h3s.length} total, ${bare.length} bare` };
 }
+// Generic open/close tag-balance check on the RAW string, before DOMParser
+// ever sees it — DOMParser silently "fixes" mis-nesting the same way a real
+// browser does, so checking the parsed `doc` can never catch this. Confirmed
+// real example: an aside card's own <p>...</p> never closed, so the next
+// </div> closed the <p> AND the card's <div> together, leaving every
+// element after it nested one level deeper than intended. Deliberately
+// excludes <ins> from the void set — this pipeline always uses it as a
+// normal paired container (<ins ...></ins> for ad slots).
+function vCheckTagBalance(bodyHtml){
+  const VOID_ELEMENTS_FOR_BALANCE = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  const body = String(bodyHtml||'');
+  const stack = [];
+  const tagRe = /<\/?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/g;
+  const offenders = [];
+  let m;
+  while((m = tagRe.exec(body))){
+    const full = m[0]; const name = m[1].toLowerCase();
+    if(full.startsWith('<!') || VOID_ELEMENTS_FOR_BALANCE.has(name) || full.endsWith('/>')) continue;
+    if(full.startsWith('</')){
+      if(stack.length && stack[stack.length-1]===name){ stack.pop(); continue; }
+      const idx = stack.lastIndexOf(name);
+      if(idx===-1) offenders.push(`</${name}> with no matching open <${name}>`);
+      else { offenders.push(`<${stack[idx+1]||name}> never closed — a later </${name}> closed it instead`); stack.length = idx; }
+    } else stack.push(name);
+  }
+  if(stack.length) offenders.push(`${stack.length} tag(s) never closed by the end: <${stack.join('>, <')}>`);
+  return { id:'tag-balance', label:'Every opened tag is properly closed (no swallowed </p>/</div>)', tier:'hard',
+    pass: offenders.length===0, detail: offenders.length ? offenders.join('; ') : 'clean' };
+}
 function vCheckScriptTags(doc){
   const n = doc.querySelectorAll('script').length;
   return { id:'no-script', label:'Zero <script> tags in body', tier:'hard', pass: n===0, detail: `${n} found` };
@@ -3258,6 +3321,14 @@ function vCheckPipelineArtifacts(bodyHtml, seo){
   // page's renderer didn't know — i.e. the fetched prompt and this loaded tool are
   // different versions. Hard-fail rather than publish a wall of raw JSON to readers.
   if(/"kind"\s*:\s*"(grid|flow|timeline|bars|comparison|tree)"/i.test(proseOnly)) offenders.push('raw chart JSON leaked into the body — the prompt and this tool are out of sync (this page does not know the {* chart *} block type; reload it)');
+  // Confirmed real, live example: `{C("Teacher decision loop","<p>...</p>","#16a34a")}`
+  // shipped as literal visible text — an invented macro/function-call-looking
+  // placeholder standing in for a real card, never expanded by anything
+  // (HARD BAN 7 in the master prompt). Generalizes past the old {* type *}
+  // block-tag pattern, which this same check already implicitly covers via
+  // the `[A-Za-z][A-Za-z0-9_]*\(` shape.
+  const macroMatch = html.match(/\{[A-Za-z][A-Za-z0-9_]*\([^)]*\)\}/);
+  if(macroMatch) offenders.push(`invented macro-like placeholder instead of real HTML (e.g. "${macroMatch[0].slice(0,60)}")`);
   // The "block title still starts with a type keyword" check (e.g. a card
   // literally titled "chart: ...") was removed here -- it only made sense
   // for the OLD {* type: title *} block-tag system, where a failed parse
@@ -3279,6 +3350,7 @@ function vRunChecks(seo, bodyHtml){
   const doc = vParseBody(bodyHtml);
   const checks = [
     vCheckPipelineArtifacts(bodyHtml, seo),
+    vCheckTagBalance(bodyHtml),
     vCheckImageAlt(doc, seo.focusKeyword),
     vCheckParagraphs(doc), vCheckLinks(doc), vCheckDuplicateIds(doc), vCheckBareH3(doc),
     vCheckScriptTags(doc), vCheckCitations(doc), vCheckToc(doc), vCheckAdSlots(doc),

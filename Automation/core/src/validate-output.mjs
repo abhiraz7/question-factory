@@ -49,6 +49,16 @@ function checkSentinelArtifacts(bundle, issues) {
   if (/\{\*\s*type\s*:/.test(body)) {
     pushIssue(issues, 'error', 'UNEXPANDED_BLOCK_TAG', 'Body contains an unexpanded {* type: ... *} block-tag marker — the block-tag expander failed or was skipped.');
   }
+  // Catches any invented `{Identifier(...)}` macro/function-call-looking
+  // placeholder standing in for real HTML — confirmed real, live example:
+  // `{C("Teacher decision loop","Observe -> ...","#16a34a")}` shipped as
+  // literal text in a generated note instead of a styled card. There is no
+  // expander for these (unlike the {* type *} block-tag system, which at
+  // least had one at one point) — this is pure HARD BAN 7 violation.
+  const macroMatch = body.match(/\{[A-Za-z][A-Za-z0-9_]*\([^)]*\)\}/);
+  if (macroMatch) {
+    pushIssue(issues, 'error', 'UNEXPANDED_MACRO_PLACEHOLDER', `Body contains an invented macro-like placeholder instead of real HTML (e.g. "${macroMatch[0].slice(0, 60)}") — HARD BAN 7 violation, no expander exists for this.`);
+  }
   if (/<<<[A-Z_]+>>>/.test(body)) {
     pushIssue(issues, 'error', 'LEAKED_SENTINEL', 'Body contains a literal <<<SENTINEL>>> marker that should have been stripped during parsing.');
   }
@@ -86,6 +96,51 @@ function checkHtmlIntegrity(bundle, issues) {
   }
   const refIdSet = new Set(refIds);
   if (refIdSet.size !== refIds.length) pushIssue(issues, 'error', 'DUPLICATE_ID', 'Duplicate ref-N ids found among References entries.');
+}
+
+// HTML elements that never need (or legally can't have) a closing tag —
+// deliberately NOT including <ins>, which this pipeline always uses as a
+// normal paired container (<ins ...></ins> for ad slots), unlike its rare
+// self-closing-looking void use elsewhere on the web.
+const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+
+/**
+ * Generic open/close tag-balance check — catches a <p>/<div>/etc. that never
+ * got closed and was silently swallowed by the next unrelated closing tag.
+ * Confirmed real, live example: an aside card's <p>...</p> missing its own
+ * close, so the next </div> closed the <p> AND the card div's own <div> in
+ * one go, leaving every element after it nested one level deeper than
+ * intended for the rest of the document (browsers silently "fix" this, so
+ * it's invisible on a quick look, but it's genuinely malformed markup and a
+ * real contributor to "the design looks off" complaints — nothing downstream
+ * of a mis-nested element renders quite the way its own styles intend).
+ */
+function checkTagBalance(bundle, issues) {
+  const body = String(bundle.bodyHtml || '');
+  const stack = [];
+  const tagRe = /<\/?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/g;
+  let m;
+  while ((m = tagRe.exec(body))) {
+    const full = m[0];
+    const name = m[1].toLowerCase();
+    if (full.startsWith('<!') || VOID_ELEMENTS.has(name) || full.endsWith('/>')) continue;
+    if (full.startsWith('</')) {
+      if (stack.length && stack[stack.length - 1] === name) { stack.pop(); continue; }
+      const idx = stack.lastIndexOf(name);
+      if (idx === -1) {
+        pushIssue(issues, 'error', 'UNMATCHED_CLOSING_TAG', `Found </${name}> with no matching open <${name}> anywhere before it.`);
+      } else {
+        const swallowed = stack.slice(idx + 1);
+        pushIssue(issues, 'error', 'UNCLOSED_TAG', `<${swallowed[0] || name}> was never closed with its own closing tag — a later </${name}> closed it (and ${swallowed.length} tag(s) inside it) instead. Check for a missing </${swallowed[0] || name}>.`);
+        stack.length = idx;
+      }
+    } else {
+      stack.push(name);
+    }
+  }
+  if (stack.length) {
+    pushIssue(issues, 'error', 'UNCLOSED_TAG_AT_END', `${stack.length} tag(s) never closed by the end of the body: <${stack.join('>, <')}>.`);
+  }
 }
 
 /** Malformed heading hierarchy — a bare <h3> ships unstyled (v13.md's own documented failure pattern). */
@@ -146,6 +201,7 @@ export function validateBundle(bundle) {
   const issues = [];
   checkRequiredFields(bundle, issues);
   checkSentinelArtifacts(bundle, issues);
+  checkTagBalance(bundle, issues);
   checkHtmlIntegrity(bundle, issues);
   checkHeadingStyling(bundle, issues);
   checkKeyphraseStuffing(bundle, issues);
