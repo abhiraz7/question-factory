@@ -99,6 +99,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .previewFrame{width:100%;height:360px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
   .noteRow{display:flex;gap:8px;align-items:center;margin:4px 0}
   .noteRow input[type=checkbox]{width:auto}
+  .pubRow.selected{background:var(--accent-bg);border-left:4px solid var(--accent);padding-left:8px}
   .copyRow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
   .copyRow:last-child{border-bottom:none}
   .copyRow .cLabel{font-weight:600;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
@@ -244,14 +245,16 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <input type="range" id="hindiPercent" min="0" max="100" step="5" value="70" oninput="updateLangMixLabel()">
   </div></details>
 
-  <fieldset style="margin-top:14px">
-    <legend>📚 Reference sources (optional)</legend>
-    <p class="hint" style="margin-top:0">Not fetched automatically — these are just handed to the AI as supporting material to ground the rewrite against, alongside whatever it already knows. Leave blank to skip.</p>
-    <label>Reference corpus (NCERT chapter text already in this repo)</label>
-    <input type="text" id="refCorpusUrl" placeholder="https://github.com/bugignore/question-factory/tree/main/Automation/ncert-knowledge-base/by-subject">
-    <label>Optional source URLs (one per line — official NCERT/exam-body pages, etc.)</label>
-    <textarea id="refSourceUrls" style="min-height:70px" placeholder="https://ncert.nic.in/...&#10;https://ctet.nic.in/..."></textarea>
-  </fieldset>
+  <details style="margin-top:14px">
+    <summary>📚 Reference sources (optional)</summary>
+    <div>
+      <p class="hint" style="margin-top:8px">Not fetched automatically — these are just handed to the AI as supporting material to ground the rewrite against, alongside whatever it already knows. Leave blank to skip.</p>
+      <label>Reference corpus (NCERT chapter text already in this repo)</label>
+      <input type="text" id="refCorpusUrl" placeholder="https://github.com/bugignore/question-factory/tree/main/Automation/ncert-knowledge-base/by-subject">
+      <label>Optional source URLs (one per line — official NCERT/exam-body pages, etc.)</label>
+      <textarea id="refSourceUrls" style="min-height:70px" placeholder="https://ncert.nic.in/...&#10;https://ctet.nic.in/..."></textarea>
+    </div>
+  </details>
 
   <fieldset style="margin-top:14px">
     <legend>🔍 1a · Review first — find what's actually wrong</legend>
@@ -549,6 +552,11 @@ async function loadPublishedList(btn){
           postId: data.wordpress.postId, link: data.wordpress.link || '',
           examType: data.examType || '', subject: data.subject || '',
           publishedAt: data.wordpress.publishedAt || data.createdAt || '',
+          // updatedAt is new (buildBundle() below now stamps it on every save
+          // through this tool) — older bundles saved before this existed fall
+          // back to whatever timestamp is available, so the list never shows
+          // a blank "updated" date, just the best honest guess it has.
+          updatedAt: data.updatedAt || data.wordpress.publishedAt || data.createdAt || '',
           wordCount: bodyWordCount(data.bodyHtml), data };
       }catch(e){ return null; }
     }));
@@ -571,14 +579,41 @@ function renderPublishedList(){
     return it.title.toLowerCase().includes(q) || String(it.postId)===q || it.slug.toLowerCase().includes(q);
   });
   if(!rows.length){ wrap.innerHTML = '<div class="hint" style="padding:12px">No matches.</div>'; return; }
-  wrap.innerHTML = rows.map((it,i)=>{
-    const idx = publishedItems.indexOf(it);
-    const badge = it.contentType==='note' ? 'Note' : 'Long Post';
-    return `<div class="noteRow" style="flex-direction:column;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer" onclick="tryRun(()=>selectPublishedItem(${idx}))">
-      <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b><span class="chip">${badge}</span></div>
-      <div class="hint" style="margin:2px 0 0">#${it.postId} · ${escBlockTitle(it.examType)} · ${escBlockTitle(it.subject)} · ${it.wordCount.toLocaleString()} words · ${it.publishedAt ? it.publishedAt.slice(0,10) : ''}</div>
-    </div>`;
+
+  // Grouped by exam type (the examType string the note/long-post was
+  // generated with — e.g. "DSSSB", "CTET Paper I / CTET Paper II") instead of
+  // one flat chronological list, so posts from the same exam sit together.
+  // examType now shows as the group header rather than repeated per row.
+  const groups = new Map();
+  for(const it of rows){
+    const key = it.examType || '(No exam set)';
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  const sortedKeys = [...groups.keys()].sort((a,b) => a.localeCompare(b));
+
+  wrap.innerHTML = sortedKeys.map(key => {
+    const items = groups.get(key);
+    const rowsHtml = items.map(it => {
+      const idx = publishedItems.indexOf(it);
+      const badge = it.contentType==='note' ? 'Note' : 'Long Post';
+      const updated = it.updatedAt ? it.updatedAt.slice(0,10) : '';
+      return `<div class="noteRow pubRow" style="flex-direction:column;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer" data-idx="${idx}" onclick="tryRun(()=>selectPublishedItem(${idx}))">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13.5px">${escBlockTitle(it.title)}</b><span class="chip">${badge}</span></div>
+        <div class="hint" style="margin:2px 0 0">#${it.postId} · ${escBlockTitle(it.subject)} · ${it.wordCount.toLocaleString()} words${updated ? ` · updated ${updated}` : ''}</div>
+      </div>`;
+    }).join('');
+    return `<div style="padding:7px 12px;background:var(--card-2);font-weight:650;font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line-soft);position:sticky;top:0;z-index:1">${escBlockTitle(key)} <span style="font-weight:500">(${items.length})</span></div>${rowsHtml}`;
   }).join('');
+}
+// Selection feedback lives on the row itself (a highlighted/active state)
+// instead of a separate "Selected: ..." message elsewhere on the page —
+// immediate and in-context, and survives re-renders of the list (e.g.
+// typing in the search box) since it's re-applied here, not just set once.
+function highlightSelectedPubRow(idx){
+  document.querySelectorAll('#pubListWrap .pubRow').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.idx === String(idx));
+  });
 }
 
 function selectPublishedItem(idx){
@@ -611,7 +646,7 @@ function selectPublishedItem(idx){
   if(corpusField && !corpusField.value.trim()){
     corpusField.value = `https://github.com/${GH_OWNER}/${GH_REPO}/tree/main/Automation/ncert-knowledge-base/by-subject`;
   }
-  show(msg('pubSelectedMsg'),'ok', `Selected "${old.seo.slug}" (${it.contentType==='note'?'Note':'Long Post'}, WordPress post #${it.postId}). Review the fields below, then tap "Build update prompt".`);
+  highlightSelectedPubRow(idx);
 }
 
 /* ================= Direct WYSIWYG edit (skips the AI prompt round-trip) =================
@@ -638,7 +673,6 @@ function editPublishedDirectly(idx){
   state.featuredImage = null;
   cur = 2;
   render();
-  show(msg('pubSelectedMsg'),'ok', `Editing "${old.seo.slug}" directly — skipped the AI prompt step. Use the preview below like a document, then Auto-save when ready.`);
 }
 
 /* ---------- Topic bank (syllabus browsing, published-only) ----------
@@ -737,10 +771,13 @@ function renderTopicBank(){
     .filter(r => r.subjectLabel === subj && (!q || r.topic.toLowerCase().includes(q)))
     .map(r => ({...r, pubIdx: findPublishedIndexForTopic(source.examMatch, r.topic)}))
     .filter(r => r.pubIdx !== -1); // unpublished topics don't belong in an UPDATE tool — they show up in notes-factory/question-factory's create-flow topic bank instead
+  // Whole row is tappable (same pattern as the main published-posts list
+  // above) instead of a separate "Edit" button — one less precise target to
+  // hit on mobile, and consistent with how the rest of this page's lists work.
   listEl.innerHTML = rows.length
-    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+    ? rows.map(r => `<div style="display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer" onclick="tryRun(()=>editPublishedDirectly(${r.pubIdx}))">
         <span style="flex:1;font-size:13px">${r.topic.replace(/</g,'&lt;')}</span>
-        <button class="btn small ghost" onclick="tryRun(()=>editPublishedDirectly(${r.pubIdx}))">✏️ Edit</button>
+        <span style="color:var(--ink-soft);font-size:14px;flex:none">✏️</span>
       </div>`).join('')
     : '<p class="hint">No published topics in this subject yet.</p>';
 }
@@ -2642,7 +2679,13 @@ function buildBundle(){
     topic: state.topic, examType: state.examType, subject: state.subject, targetYear: 2026,
     hindiPercent: state.hindiPercent,
     seo: state.seo, bodyHtml: state.bodyHtml, publisherNotes: state.publisherNotes,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    // Distinct from createdAt above (which this tool has always stamped with
+    // "now" on every save, including updates — so it was never really a true
+    // creation date for an edited article anyway). updatedAt is the
+    // unambiguous one: it only ever means "this save happened at X," which is
+    // exactly what the published-list UI's "updated" column needs.
+    updatedAt: new Date().toISOString(),
   };
   if(state.wordpress) bundle.wordpress = state.wordpress;
   // Feeds Automation/content-memory/ — an update overwrites the article's
