@@ -63,6 +63,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .btn.green{background:var(--ok);border-color:var(--ok)}
   .btn.small{width:auto;display:inline-flex;padding:8px 14px;font-size:13px;margin-top:8px}
   .btn:disabled{opacity:.4}
+  .miniCopy{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;font-size:14px;cursor:pointer;line-height:1;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center}
   .msg{border-radius:9px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
   .msg.show{display:block}
   .msg.ok{background:var(--ok-bg);color:var(--ok)}
@@ -138,6 +139,26 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
       <input type="text" id="topicBankSearch" placeholder="Search within this subject…" oninput="renderTopicBank()" style="margin-top:8px">
       <div id="topicBankList" style="margin-top:8px;max-height:280px;overflow-y:auto"></div>
       <div class="msg" id="topicBankMsg"></div>
+
+      <details style="margin-top:14px">
+        <summary>➕ Add topics to this syllabus (same CSV file notes-factory/update-factory read from)</summary>
+        <div>
+          <p class="hint" style="margin-top:8px">Adds to whichever Exam source is picked above — saved topics appear in the list above next time this syllabus is loaded (including in notes-factory and update-factory, same shared file).</p>
+          <label style="margin-top:4px">Subject</label>
+          <input type="text" id="tbNewSubject" list="tbSubjectSuggest" placeholder="Must match an existing subject to group correctly, or type a new one">
+          <datalist id="tbSubjectSuggest"></datalist>
+          <label>New topic</label>
+          <input type="text" id="tbNewTopic" placeholder="Topic text, exactly as it should appear">
+          <button class="btn small ghost" onclick="tryRun(addSingleTopicToBank,this)">➕ Add to list below</button>
+
+          <label style="margin-top:14px">Or bulk-add from a CSV (Subject,Topic columns)</label>
+          <input type="file" id="tbCsvUpload" accept=".csv" onchange="tryRun(()=>previewTopicCsvUpload(this))">
+          <p class="hint" style="margin-top:4px">Duplicates (same Subject+Topic, already in the syllabus or already added below) are skipped automatically.</p>
+
+          <div id="tbPendingWrap" style="margin-top:10px"></div>
+          <div class="msg" id="tbUploadMsg"></div>
+        </div>
+      </details>
     </div>
   </details>
 
@@ -305,6 +326,8 @@ const TOPIC_BANK_SOURCES = window.TopicBankSources
   : (console.error('shared/topic-bank-sources.js failed to load — Topic bank is unavailable.'), {});
 let topicBankRows = null;
 let topicBankLoadedSource = null;
+let topicBankRawText = null; // the exact fetched CSV text — kept so additions can be appended as new lines instead of re-serializing (and risking reformatting) every existing row
+let pendingTopicAdditions = []; // staged {subjectLabel, topic} rows, not yet pushed to GitHub
 function splitCsvLine(line){
   const out = []; let cur = ''; let inQuotes = false;
   for(let i=0; i<line.length; i++){
@@ -337,7 +360,9 @@ async function loadTopicBank(sourceKey){
   const source = TOPIC_BANK_SOURCES[sourceKey];
   const res = await fetch(source.url);
   if(!res.ok) throw new Error('HTTP '+res.status);
-  topicBankRows = parseTopicBankCsv(await res.text());
+  const text = await res.text();
+  topicBankRows = parseTopicBankCsv(text);
+  topicBankRawText = text;
   topicBankLoadedSource = sourceKey;
   return topicBankRows;
 }
@@ -359,6 +384,9 @@ async function loadTopicBankForSource(sourceKey){
       + subjects.map(s => `<option value="${s}">${s} (${rows.filter(r=>r.subjectLabel===s).length})</option>`).join('');
     document.getElementById('topicBankSubject').value = '';
     document.getElementById('topicBankSearch').value = '';
+    document.getElementById('tbSubjectSuggest').innerHTML = subjects.map(s => `<option value="${s.replace(/"/g,'&quot;')}">`).join('');
+    pendingTopicAdditions = []; // a different source's topic list is a different file — don't carry staged adds across
+    renderPendingTopicAdditions();
     renderTopicBank();
     show(msg('topicBankMsg'),'ok', rows.length+' topics available — pick a subject above.');
   }catch(e){
@@ -381,6 +409,114 @@ function renderTopicBank(){
       </div>`).join('')
     : '<p class="hint">No topics match.</p>';
 }
+
+/* ---------- Topic bank: add new topics (writes back to the real CSV in the repo) ----------
+   Stages {subjectLabel, topic} rows locally first (so a bad CSV upload or a typo
+   can be removed before anything is written), then a single "push" serializes
+   them as new lines appended to the ORIGINAL fetched CSV text (topicBankRawText)
+   — existing rows are never reformatted/re-parsed-and-rebuilt, only added to —
+   and writes that back via the same githubPutFile()/token-unlock mechanism
+   Step 4 already uses to save questions. This file is shared
+   (topic-bank-sources.js) — an addition here shows up in notes-factory/
+   update-factory's topic bank too, next time THEY fetch it. */
+function isDuplicateTopic(subjectLabel, topic){
+  const norm = s => s.trim().toLowerCase();
+  const existing = (topicBankRows||[]).some(r => norm(r.subjectLabel)===norm(subjectLabel) && norm(r.topic)===norm(topic));
+  const staged = pendingTopicAdditions.some(r => norm(r.subjectLabel)===norm(subjectLabel) && norm(r.topic)===norm(topic));
+  return existing || staged;
+}
+function stageTopicAddition(subjectLabel, topic){
+  subjectLabel = (subjectLabel||'').trim(); topic = (topic||'').trim();
+  if(!subjectLabel || !topic) return { ok:false, reason:'Both Subject and Topic are required.' };
+  if(isDuplicateTopic(subjectLabel, topic)) return { ok:false, reason:'Already in the syllabus or already added below: "'+topic+'"' };
+  pendingTopicAdditions.push({ subjectLabel, topic });
+  renderPendingTopicAdditions();
+  return { ok:true };
+}
+function addSingleTopicToBank(){
+  if(!topicBankLoadedSource){ show(msg('tbUploadMsg'),'bad','Pick an Exam source above first.'); return; }
+  const subjectEl = document.getElementById('tbNewSubject');
+  const topicEl = document.getElementById('tbNewTopic');
+  const r = stageTopicAddition(subjectEl.value, topicEl.value);
+  if(!r.ok){ show(msg('tbUploadMsg'),'bad',r.reason); return; }
+  topicEl.value = '';
+  show(msg('tbUploadMsg'),'ok','Added to the list below — review it, then push when ready.');
+}
+function previewTopicCsvUpload(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(!topicBankLoadedSource){ show(msg('tbUploadMsg'),'bad','Pick an Exam source above first.'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    let rows;
+    try{ rows = parseTopicBankCsv(String(reader.result||'')); }
+    catch(e){ show(msg('tbUploadMsg'),'bad','Could not read that CSV: '+e.message); return; }
+    let added = 0, skipped = 0;
+    for(const r of rows){
+      const res = stageTopicAddition(r.subjectLabel, r.topic);
+      if(res.ok) added++; else skipped++;
+    }
+    show(msg('tbUploadMsg'), added ? 'ok' : 'warn', `${added} new topic(s) staged below, ${skipped} skipped as duplicates. Nothing is saved yet — review the list, then push.`);
+    input.value = '';
+  };
+  reader.onerror = () => show(msg('tbUploadMsg'),'bad','Could not read that file — try again.');
+  reader.readAsText(file, 'utf-8');
+}
+function removePendingTopicAddition(idx){
+  pendingTopicAdditions.splice(idx,1);
+  renderPendingTopicAdditions();
+}
+function renderPendingTopicAdditions(){
+  const wrap = document.getElementById('tbPendingWrap');
+  if(!wrap) return;
+  if(!pendingTopicAdditions.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<p class="hint" style="margin-top:0">'+pendingTopicAdditions.length+' topic(s) staged, not yet saved:</p>'
+    + pendingTopicAdditions.map((r,i) => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:13px"><b>${r.subjectLabel.replace(/</g,'&lt;')}</b> — ${r.topic.replace(/</g,'&lt;')}</span>
+        <button class="miniCopy" onclick="removePendingTopicAddition(${i})" title="Remove">✕</button>
+      </div>`).join('')
+    + `<button class="btn small" onclick="tryRun(pushTopicBankAdditions,this)">🚀 Save ${pendingTopicAdditions.length} new topic(s) to GitHub</button>`;
+}
+// Appends new rows as new lines at the end of the ORIGINAL fetched CSV text —
+// existing rows pass through completely untouched (never re-escaped/reordered).
+// Continues the S.No. column (assumed to be column 0, true of every Topic Bank
+// CSV today — see parseTopicBankCsv's header comment) from whatever the
+// highest existing number is, rather than trusting line count.
+function appendRowsToCsv(rawText, newRows){
+  const csvEscape = v => /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  let lines = rawText.replace(/^﻿/,'').split(/\r?\n/);
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  let maxSno = 0;
+  for(let i=1;i<lines.length;i++){
+    const n = parseInt(splitCsvLine(lines[i])[0], 10);
+    if(!isNaN(n) && n > maxSno) maxSno = n;
+  }
+  const newLines = newRows.map((r,i) => [maxSno+i+1, r.subjectLabel, r.topic].map(csvEscape).join(','));
+  return lines.concat(newLines).join('\r\n') + '\r\n';
+}
+async function pushTopicBankAdditions(){
+  const m = msg('tbUploadMsg');
+  if(!pendingTopicAdditions.length){ show(m,'bad','Nothing staged to save.'); return; }
+  const token = sessionStorage.getItem('ghUnlockedToken');
+  if(!token){ show(m,'bad','Unlock saving above first (enter the app password), then try again.'); return; }
+  const source = TOPIC_BANK_SOURCES[topicBankLoadedSource];
+  const updatedCsv = appendRowsToCsv(topicBankRawText, pendingTopicAdditions);
+  show(m,'warn','Saving '+pendingTopicAdditions.length+' topic(s) to GitHub…');
+  try{
+    const path = source.csvPath.split('/').map(encodeURIComponent).join('/');
+    await githubPutFile(GH_OWNER, GH_REPO, token, path, updatedCsv, `Add ${pendingTopicAdditions.length} topic(s) to ${source.label}`);
+    topicBankRows = topicBankRows.concat(pendingTopicAdditions);
+    topicBankRawText = updatedCsv;
+    const addedCount = pendingTopicAdditions.length;
+    pendingTopicAdditions = [];
+    renderPendingTopicAdditions();
+    renderTopicBank();
+    show(m,'ok',`Saved ${addedCount} topic(s) to ${source.label}'s CSV — they're in the list above now too. notes-factory/update-factory will pick them up next time they load this syllabus (may take a minute via raw.githubusercontent.com's cache).`);
+  }catch(e){
+    show(m,'bad','Save failed: '+e.message);
+  }
+}
+
 function useTopicBankRow(idx){
   const r = topicBankRows && topicBankRows[idx];
   if(!r) return;
