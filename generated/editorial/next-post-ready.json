@@ -1,125 +1,176 @@
 {
   "topic": null,
-  "subject": "EVS",
+  "subject": "English",
   "exam": "BPSC TRE",
   "recommendation": {
     "winner": {
-      "id": "BPSC TRE::EVS",
+      "id": "BPSC TRE::English",
       "exam": "BPSC TRE",
-      "subject": "EVS",
+      "subject": "English",
       "exploitScore": 0.5,
-      "timesUsed": 1
+      "timesUsed": 0,
+      "backlogRemaining": 8,
+      "nextTopicSuggestion": "Parts of Speech और Sentence Structure: BPSC TRE 4 English Grammar आसान उदाहरणों में"
     },
     "ranked": [
+      {
+        "id": "BPSC TRE::English",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "BPSC TRE::Geography",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "BPSC TRE::History",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "BPSC TRE::Maths",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "BPSC TRE::Science",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "DSSSB::English",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
+      {
+        "id": "DSSSB::Hindi",
+        "exploitScore": 0.5,
+        "timesUsed": 0,
+        "explorationBonus": 2.067062091905214,
+        "totalScore": 2.567062091905214
+      },
       {
         "id": "BPSC TRE::EVS",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.4567880038744303,
-        "totalScore": 1.9567880038744303
+        "explorationBonus": 1.4616336223198274,
+        "totalScore": 1.9616336223198274
       },
       {
         "id": "CTET Paper I / CTET Paper II::Geography",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.4567880038744303,
-        "totalScore": 1.9567880038744303
+        "explorationBonus": 1.4616336223198274,
+        "totalScore": 1.9616336223198274
       },
       {
         "id": "CTET Paper I / CTET Paper II::Hindi",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.4567880038744303,
-        "totalScore": 1.9567880038744303
+        "explorationBonus": 1.4616336223198274,
+        "totalScore": 1.9616336223198274
       },
       {
         "id": "CTET Paper I::English",
         "exploitScore": 0.5,
         "timesUsed": 1,
-        "explorationBonus": 1.4567880038744303,
-        "totalScore": 1.9567880038744303
+        "explorationBonus": 1.4616336223198274,
+        "totalScore": 1.9616336223198274
       },
       {
         "id": "BPSC TRE::Auto-detect",
-        "exploitScore": 0.5,
+        "exploitScore": 0.75,
         "timesUsed": 2,
-        "explorationBonus": 1.1894624242999992,
-        "totalScore": 1.6894624242999992
+        "explorationBonus": 1.1934188551931462,
+        "totalScore": 1.9434188551931462
+      },
+      {
+        "id": "BPSC TRE::Hindi",
+        "exploitScore": 0.86,
+        "timesUsed": 5,
+        "explorationBonus": 0.8438745653029601,
+        "totalScore": 1.70387456530296
       },
       {
         "id": "CTET Paper I / CTET Paper II / UPTET::Maths",
         "exploitScore": 0.5,
         "timesUsed": 2,
-        "explorationBonus": 1.1894624242999992,
-        "totalScore": 1.6894624242999992
+        "explorationBonus": 1.1934188551931462,
+        "totalScore": 1.6934188551931462
       },
       {
         "id": "CTET Paper I::Auto-detect",
         "exploitScore": 0.5,
         "timesUsed": 2,
-        "explorationBonus": 1.1894624242999992,
-        "totalScore": 1.6894624242999992
+        "explorationBonus": 1.1934188551931462,
+        "totalScore": 1.6934188551931462
       },
       {
         "id": "CTET Paper I / CTET Paper II::CDP",
         "exploitScore": 0.5,
         "timesUsed": 3,
-        "explorationBonus": 1.0301046762908241,
-        "totalScore": 1.5301046762908241
+        "explorationBonus": 1.033531045952607,
+        "totalScore": 1.533531045952607
       },
       {
         "id": "CTET Paper I::CDP",
         "exploitScore": 0.5,
         "timesUsed": 3,
-        "explorationBonus": 1.0301046762908241,
-        "totalScore": 1.5301046762908241
-      },
-      {
-        "id": "BPSC TRE::Hindi",
-        "exploitScore": 0.5,
-        "timesUsed": 5,
-        "explorationBonus": 0.8410769461891199,
-        "totalScore": 1.3410769461891199
+        "explorationBonus": 1.033531045952607,
+        "totalScore": 1.533531045952607
       },
       {
         "id": "DSSSB::History",
         "exploitScore": 0.5,
         "timesUsed": 5,
-        "explorationBonus": 0.8410769461891199,
-        "totalScore": 1.3410769461891199
+        "explorationBonus": 0.8438745653029601,
+        "totalScore": 1.34387456530296
       },
       {
         "id": "CTET Paper I / CTET Paper II::EVS",
         "exploitScore": 0.5,
         "timesUsed": 7,
-        "explorationBonus": 0.7283940019372152,
-        "totalScore": 1.228394001937215
+        "explorationBonus": 0.7308168111599137,
+        "totalScore": 1.2308168111599138
       },
       {
         "id": "CTET Paper I / CTET Paper II::Maths",
         "exploitScore": 0.5,
         "timesUsed": 8,
-        "explorationBonus": 0.6867364508605494,
-        "totalScore": 1.1867364508605494
+        "explorationBonus": 0.689020697301738,
+        "totalScore": 1.1890206973017379
       },
       {
         "id": "CTET Paper I / CTET Paper II::Auto-detect",
         "exploitScore": 0.5,
         "timesUsed": 9,
-        "explorationBonus": 0.6514954010938906,
-        "totalScore": 1.1514954010938907
+        "explorationBonus": 0.6536624275412776,
+        "totalScore": 1.1536624275412777
       },
       {
         "id": "DSSSB::Auto-detect",
         "exploitScore": 0.5,
-        "timesUsed": 17,
-        "explorationBonus": 0.48559600129147673,
-        "totalScore": 0.9855960012914767
+        "timesUsed": 19,
+        "explorationBonus": 0.46220913512129763,
+        "totalScore": 0.9622091351212976
       }
     ]
   },
   "confidence": 0,
-  "generatedAt": "2026-10-07T13:15:27.528Z",
+  "generatedAt": "2026-10-08T02:50:05.242Z",
   "mode": "recommend-only",
-  "humanActionNeeded": "No topic backlog data source exists in this repo yet (checked Automation/wp-structure/*.tsv — that is WordPress course/subject taxonomy, not a content backlog). Re-run with --topic \"...\" --subject \"...\" --exam \"...\" once a specific next topic is chosen, or wire a real topic backlog into this script. See this session's EDITORIAL_INTELLIGENCE_PROGRESS_REPORT.md."
+  "humanActionNeeded": "Real backlog candidate found: \"Parts of Speech और Sentence Structure: BPSC TRE 4 English Grammar आसान उदाहरणों में\" (BPSC TRE/English, 8 more unpublished in this pair's syllabus). Re-run with --topic \"Parts of Speech और Sentence Structure: BPSC TRE 4 English Grammar आसान उदाहरणों में\" --subject \"English\" --exam \"BPSC TRE\" to get a full editorial brief for it, or pick a different one from Automation/input sylabuss/."
 }
