@@ -60,7 +60,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: editorial-refresh
+  # Joins whichever publisher's own concurrency group triggered this run
+  # (PUB.NOTE's "publish-notes" or PUB.LPOST's "publish-long-posts") instead
+  # of its own separate "editorial-refresh" group. This job also
+  # commits+pushes to main (editorial state + learned-state files), and
+  # running it in a separate group let it land a push in the same window a
+  # publish run was mid-flight on, causing rebase conflicts on shared
+  # bookkeeping files (content-memory/, published-notes/index.json). This
+  # workflow explicitly isn't time-critical (see header comment), so
+  # queuing behind a publish run costs nothing. workflow_dispatch (manual,
+  # no triggering workflow_run) falls back to "publish-notes".
+  group: ${{ github.event.workflow_run.name == 'PUB.LPOST' && 'publish-long-posts' || 'publish-notes' }}
   cancel-in-progress: false
 
 jobs:

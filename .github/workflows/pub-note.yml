@@ -390,20 +390,38 @@ jobs:
           done
 
           # commit whatever succeeded, even if something else failed. A push
-          # can fail on a real race (another workflow run pushed in between) —
-          # retry once with a rebase-pull before giving up, since losing an
-          # otherwise-successful publish to a transient push race would be
-          # exactly the kind of failure this refactor exists to eliminate.
+          # can fail on a real race (another workflow run, or ED.REFRESH,
+          # pushed in between) — retry with a rebase-pull a few times before
+          # giving up, since losing an otherwise-successful publish to a
+          # transient push race would be exactly the kind of failure this
+          # refactor exists to eliminate. A single retry wasn't enough in
+          # practice: every run reprocesses the FULL pending-notes/ glob (not
+          # just the file that triggered it), so a note stuck retrying
+          # WordPress connectivity gets swept up again by every later push,
+          # and two such runs landing their bookkeeping commit within a few
+          # seconds of each other is common, not rare.
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "Publish note(s) to WordPress as draft [skip ci]"
-            if ! git push; then
-              echo "::warning::git push rejected (likely a concurrent run) — retrying once after a rebase pull."
-              if ! git pull --rebase origin main || ! git push; then
-                echo "::error::git push still failed after retry. The WordPress posts above ARE already live/drafted — only the repo's published-notes/ bookkeeping failed to commit. Re-run this workflow, or commit manually, to fix the bookkeeping; do not re-publish."
-                failed=1
+            push_ok=0
+            for attempt in 1 2 3 4 5; do
+              if git push; then
+                push_ok=1
+                break
               fi
+              echo "::warning::git push rejected (likely a concurrent run) — retrying after a rebase pull (attempt $attempt/5)."
+              git rebase --abort >/dev/null 2>&1 || true
+              if ! git pull --rebase origin main; then
+                echo "::warning::rebase hit a conflict — aborting this attempt and re-fetching."
+                git rebase --abort >/dev/null 2>&1 || true
+                sleep 5
+                continue
+              fi
+            done
+            if [ "$push_ok" != "1" ]; then
+              echo "::error::git push still failed after retries. The WordPress posts above ARE already live/drafted — only the repo's published-notes/ bookkeeping failed to commit. Re-run this workflow, or commit manually, to fix the bookkeeping; do not re-publish."
+              failed=1
             fi
           fi
 
