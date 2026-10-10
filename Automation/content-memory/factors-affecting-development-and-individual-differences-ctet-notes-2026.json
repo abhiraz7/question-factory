@@ -4,38 +4,72 @@
   "topic": "Educational Psychology",
   "subject": "CDP",
   "exam": "CTET Paper I / CTET Paper II",
-  "flavour": null,
+  "flavour": "classroom-situation",
   "concepts_taught": [
-    "यह Topic कितना Important है? — Exam Weightage",
-    "Core Concepts — Heredity, Environment और Individual Differences",
-    "Pedagogy & NCF/NEP Angle — Exam में Teacher से क्या पूछा जाता है?",
-    "Current Updates — NEP 2020 और NCF 2023 के नए बदलाव",
-    "Deep Theory + Flowchart — Nature vs Nurture पूरा Debate",
-    "Comparison Tables — Heredity vs Environment, Intelligence vs Personality",
-    "Mnemonics — इस Topic के सभी Memory Tricks",
-    "Conclusion + Next-Topic Roadmap",
-    "Frequently Asked Questions — Factors Affecting Development and Individual Differences CTET Notes 2026"
+    "heredity",
+    "environment",
+    "interaction of heredity and environment",
+    "individual differences",
+    "physical and cognitive variation",
+    "classroom response to different learning needs",
+    "NEP 2020 Foundational Stage"
   ],
-  "misconceptions_used": [],
-  "examples_used": [],
-  "pedagogical_strategy": "unknown",
+  "misconceptions_used": [
+    "intelligence is determined only by heredity",
+    "all students learn at the same pace",
+    "a fixed percentage of development is settled by age 3–8",
+    "exam topic weightage can be asserted without official evidence"
+  ],
+  "examples_used": [
+    "student who performs better orally than in writing",
+    "practice and feedback improve a skill",
+    "language, culture and family experience as environmental factors"
+  ],
+  "pedagogical_strategy": "classroom scenario followed by teacher decision, concept explanation and practice questions",
   "article_shape": [
-    "section-1-exam-importance",
-    "section-2-core-concepts",
-    "section-3-pedagogy-nep",
-    "section-4-updates",
-    "section-5-deep-theory",
-    "section-6-comparison-tables",
-    "section-7-mnemonics",
-    "section-8-conclusion-roadmap",
-    "faq-factors-affecting-development"
+    "opening-and-definition",
+    "topic-context",
+    "heredity",
+    "environment",
+    "individual-differences",
+    "pedagogy-and-policy",
+    "current-policy-context",
+    "nature-versus-nurture",
+    "comparison-tables",
+    "classification-tree",
+    "memory-recap",
+    "practice-questions",
+    "conclusion",
+    "faq",
+    "references"
   ],
-  "question_types": [],
+  "question_types": [
+    "classroom scenario",
+    "assertion-reason",
+    "concept check",
+    "classification",
+    "teacher decision"
+  ],
   "sources": [
-    "ncert.nic.in"
+    "NCERT Class XII Psychology: Variations in Psychological Attributes",
+    "CTET official website and syllabus resources",
+    "NCERT National Curriculum Framework for School Education 2023",
+    "National Education Policy 2020"
   ],
-  "postId": "161",
-  "link": "https://examnotespdf.in/?post_type=free_notes&p=161",
-  "published": "2026-07-17T14:30:01Z",
-  "derived": true
+  "card_sentences_used": [
+    "1. Classroom scenario: एक विद्यार्थी मौखिक उत्तरों में अच्छा है, लेकिन लिखित कार्य में अधिक समय लेता है। शिक्षक की सबसे उपयुक्त प्रतिक्रिया क्या होगी?",
+    "उत्तर: उसकी कठिनाई का कारण समझकर अलग-अलग तरीकों से सीखने और उत्तर देने के अवसर देना। केवल एक प्रदर्शन के आधार पर क्षमता का स्थायी निर्णय नहीं करना चाहिए।",
+    "2. Assertion–Reason: Assertion: सभी विद्यार्थी एक ही गति से सीखते हैं। Reason: सभी विद्यार्थियों के अनुभव, अवसर और व्यक्तिगत विशेषताएँ समान होती हैं।",
+    "उत्तर: Assertion और Reason दोनों गलत हैं। विद्यार्थियों की सीखने की गति और अनुभवों में अंतर हो सकता है।",
+    "3. Concept check: भाषा, संस्कृति और पारिवारिक अनुभव किस व्यापक कारक के उदाहरण हैं?",
+    "उत्तर: Environment (वातावरण)।",
+    "4. Classification: ऊँचाई और आँखों का रंग किस प्रकार की व्यक्तिगत भिन्नताओं के उदाहरण हैं?",
+    "उत्तर: शारीरिक विशेषताओं में भिन्नता; इनके विकास में आनुवंशिक और अन्य कारकों की भूमिका हो सकती है।",
+    "5. Teacher decision: दो विद्यार्थियों के प्रदर्शन में अंतर देखकर शिक्षक को क्या करना चाहिए?",
+    "उत्तर: उनके पूर्वज्ञान, भाषा, अभ्यास, अवसर और सीखने की जरूरतों को समझकर शिक्षण और feedback में उचित बदलाव करना चाहिए।",
+    "ये अभ्यास प्रश्न हैं, आधिकारिक CTET प्रश्नपत्रों से लिए गए VERIFIED PYQ नहीं।"
+  ],
+  "postId": "648",
+  "link": "https://examnotespdf.in/?post_type=free_notes&p=648",
+  "published": "2026-10-10T17:28:19Z"
 }
