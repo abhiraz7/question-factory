@@ -1648,8 +1648,21 @@ function parseReviewReply(btn){
   if(!m){ show(msg('reviewParseMsg'),'bad',"Could not find a <<<REVIEW_JSON>>> block in that reply — paste the AI's full review response."); return; }
   let parsed;
   try{
-    const jsonText = m[1].replace(/```(?:json)?/g,'').trim();
-    parsed = JSON.parse(jsonText);
+    // Some models wrap their whole answer in an outer code fence and escape
+    // the inner ```json fence with backslashes (\```json ... \```) so it
+    // doesn't prematurely close the outer one — normalize those escaped
+    // backticks to plain ones before stripping the fence markers, otherwise
+    // the stray backslashes are left sitting right next to the JSON.
+    let jsonText = m[1].replace(/\\`/g,'`').replace(/```(?:json)?/g,'').trim();
+    try{
+      parsed = JSON.parse(jsonText);
+    }catch(e1){
+      // Fallback: pull out the outermost {...} in case anything else (stray
+      // prose, leftover fence debris) survived the cleanup above.
+      const first = jsonText.indexOf('{'), last = jsonText.lastIndexOf('}');
+      if(first===-1 || last===-1 || last<=first) throw e1;
+      parsed = JSON.parse(jsonText.slice(first, last+1));
+    }
   }catch(e){
     show(msg('reviewParseMsg'),'bad','Found the review block but could not parse its JSON: '+e.message);
     return;
@@ -1687,12 +1700,15 @@ function renderReviewFlags(){
     : '';
   wrap.innerHTML = overall + flagsHtml + goodHtml;
 }
-async function copyReviewPrompt(btn){
+// Builds the review prompt, fills reviewPromptOut/builtReviewPromptText and
+// renders the part-copy buttons, but never copies anything itself — callers
+// decide whether to auto-copy (copyReviewPrompt) or always copy (copyWholeReviewPrompt).
+function buildReviewPromptUI(){
   const topic = document.getElementById('topic').value;
   const examType = document.getElementById('examType').value.trim();
   const subject = document.getElementById('subject').value;
   const hindiPercent = parseInt(document.getElementById('hindiPercent').value, 10);
-  if(!state.contentType){ show(msg('reviewPromptMsg'),'bad','Pick a published post from the list above first.'); return; }
+  if(!state.contentType){ show(msg('reviewPromptMsg'),'bad','Pick a published post from the list above first.'); return null; }
   const full = buildReviewPrompt(topic, examType, subject, hindiPercent);
   const out = document.getElementById('reviewPromptOut');
   out.value = full;
@@ -1700,6 +1716,12 @@ async function copyReviewPrompt(btn){
   const words = full.trim().split(/\s+/).length;
   const parts = splitForCopy(full);
   renderCopyParts('reviewPartsButtons', full, 'reviewPromptMsg');
+  return {full, words, parts};
+}
+async function copyReviewPrompt(btn){
+  const built = buildReviewPromptUI();
+  if(!built) return;
+  const {full, words, parts} = built;
   if(parts.length > 1){
     document.getElementById('reviewPartsWrap').open = true;
     show(msg('reviewPromptMsg'),'ok',`Review prompt built (${words.toLocaleString()} words) — on mobile, use the ${parts.length} "Copy part" buttons below in order instead of copying it all at once. On a PC, "Copy whole prompt" is fine.`);
@@ -1710,9 +1732,7 @@ async function copyReviewPrompt(btn){
 
 async function copyWholeReviewPrompt(btn){
   if(!builtReviewPromptText){
-    show(msg('reviewPromptMsg'),'warn','Building review prompt first…');
-    await copyReviewPrompt(btn);
-    if(!builtReviewPromptText) return;
+    if(!buildReviewPromptUI()) return;
   }
   doCopy(builtReviewPromptText, btn, msg('reviewPromptMsg'), 'Whole review prompt copied — fine on a PC clipboard; if it comes out cut off, use the "Copy part" buttons below instead.');
 }
