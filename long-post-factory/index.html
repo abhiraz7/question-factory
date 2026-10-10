@@ -96,7 +96,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   nav.bot button#nextBtn{background:var(--ink);color:var(--paper);border-color:var(--ink);flex:2}
   nav.bot button:disabled{opacity:.35}
   .chip{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:11.5px;margin:2px 2px 0 0}
-  .previewFrame{width:100%;height:360px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
+  .previewFrame{width:100%;height:640px;min-height:360px;resize:vertical;overflow:auto;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff}
   .noteRow{display:flex;gap:8px;align-items:center;margin:4px 0}
   .noteRow input[type=checkbox]{width:auto}
   .copyRow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
@@ -118,7 +118,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   /* mobile is the primary target: collapse side-by-side fields on narrow phones */
   @media (max-width:420px){
     .row2{grid-template-columns:1fr}
-    .previewFrame{height:300px}
+    .previewFrame{height:460px}
   }
   .pipeline{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:var(--card);box-shadow:var(--shadow)}
   .pipeline-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
@@ -358,6 +358,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <div class="pstep" id="pStepActions"><span class="dot">2</span><span id="pStepActionsTxt">GitHub Actions running</span></div>
     <div class="pstep" id="pStepWp"><span class="dot">3</span><span id="pStepWpTxt">Published to WordPress (draft)</span></div>
   </div>
+  <div class="pipeline-actions" id="pipelineActions" style="display:none;margin-top:10px;gap:8px">
+    <button type="button" class="btn small ghost" style="margin:0" onclick="tryRun(()=>checkPublishStatus(),this)">🔄 Check status</button>
+    <button type="button" class="btn small" id="pipelineRetryBtn" style="margin:0;display:none" onclick="tryRun(()=>retryPublish(),this)">🔁 Retry publish</button>
+  </div>
+  <div class="msg" id="pipelineActionsMsg" style="margin-top:6px"></div>
 </div>
 
 <nav class="bot">
@@ -944,7 +949,7 @@ Your goal is not maximum information density — it's maximum learning value per
 Revise weak parts before returning the final answer — this is not an extra step for the user, just something you do silently before printing.
 
 ## OUTPUT FORMAT — ONE Markdown file, code-fenced, NOTHING ELSE
-Two extra SEO fields beyond the frontmatter shape shown: "imageAltText" (starts with the keyphrase, describes the featured image) and "imagePrompt" (a ready-to-paste AI image-gen prompt: loud, high-CTR YouTube-thumbnail style — exaggerated expression on a student/teacher character, bold saturated colors, thick outlines, 16:9, explicitly NO baked-in text).
+Two extra SEO fields beyond the frontmatter shape shown: "imageAltText" (starts with the keyphrase, describes the featured image) and "imagePrompt" (a ready-to-paste AI image-gen prompt: clean handwritten-notebook / teacher's-whiteboard study-notes style — notebook or whiteboard background, hand-drawn headings, small doodles/icons tied to the topic, color-coded sections with connecting arrows, a boxed summary corner, 16:9, explicitly NO readable words/text baked in).
 
 === DELIVERY METHOD — MANDATORY, CHECK THIS FIRST ===
 The person on the other end is very likely on a MOBILE PHONE, where copying a long chat reply is unreliable or blocked outright by the app. Because of this:
@@ -2071,14 +2076,16 @@ function fillReviewForm(){
    swaps it into the body in place of the placeholder <img> the block system
    renders. */
 const FEATURED_IMAGE_MAX_WIDTH = 1600;
-function stripImageMetadataAndResize(file){
+const INLINE_IMAGE_MAX_WIDTH = 900;
+function stripImageMetadataAndResize(file, maxWidth){
+  maxWidth = maxWidth || FEATURED_IMAGE_MAX_WIDTH;
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>{
         let w = img.naturalWidth, h = img.naturalHeight;
-        if(w > FEATURED_IMAGE_MAX_WIDTH){ h = Math.round(h * FEATURED_IMAGE_MAX_WIDTH / w); w = FEATURED_IMAGE_MAX_WIDTH; }
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
@@ -2240,7 +2247,7 @@ function attachPreviewEditing(frame){
   const style = doc.createElement('style');
   style.textContent = 'body[contenteditable="true"]{cursor:text} body[contenteditable="true"]:focus{outline:2px dashed #2563eb;outline-offset:-2px}';
   doc.head.appendChild(style);
-  doc.body.addEventListener('input', () => {
+  const syncFromPreview = () => {
     const html = doc.body.innerHTML;
     const ta = document.getElementById('fBodyHtml');
     if(ta) ta.value = html;
@@ -2250,6 +2257,24 @@ function attachPreviewEditing(frame){
     const bw = document.getElementById('bodyWords');
     if(bw) bw.textContent = words.toLocaleString();
     saveDraft();
+  };
+  doc.body.addEventListener('input', syncFromPreview);
+  // Paste an image straight into the body text, right where the cursor is —
+  // no separate upload step. Resized/re-encoded through the same canvas
+  // path as the featured image (so EXIF/metadata is stripped the same way),
+  // just capped narrower since this is an inline diagram, not a hero image,
+  // then inserted as a plain data-URL <img> at the caret via execCommand so
+  // it lands inside whatever paragraph/card the cursor is in.
+  doc.body.addEventListener('paste', e=>{
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(i=>i.type && i.type.startsWith('image/'));
+    if(!item) return; // let normal text paste proceed untouched
+    e.preventDefault();
+    const file = item.getAsFile();
+    stripImageMetadataAndResize(file, INLINE_IMAGE_MAX_WIDTH).then(result=>{
+      const html = '<img src="'+result.dataUrl+'" alt="" style="max-width:100%;height:auto;display:block;margin:14px auto;border-radius:6px">';
+      doc.execCommand('insertHTML', false, html);
+      syncFromPreview();
+    }).catch(err=>{ show(msg('reviewMsg'),'bad','Could not paste that image: '+err.message); });
   });
 }
 function updatePreview(){
@@ -2557,20 +2582,108 @@ function closePipelineMini(){
    works on another note — takes its own slug snapshot rather than reading
    live state, since state.seo.slug may belong to a different note by the
    time this finishes */
+/* Pipeline tracker's authoritative source of truth: does
+   published-long-posts/<slug>.json actually exist on GitHub? The Actions-run
+   status and commit-message polling below are just progress indicators —
+   a run can finish with "failure" (the documented git-push-race in
+   pub-lpost.yml, or a late content-memory bookkeeping hiccup) AFTER the
+   WordPress draft was already created successfully, which used to show up
+   here as a flat "fail" even though the post had posted. This function is
+   what both the automatic fallback and the manual "Check status"/"Retry"
+   buttons call to find out what's actually true. */
+let pipelineCtx = null; // {token, slug, pendingPath, publishedDir, workflowFile}
+async function resolvePublishStatus(ctx){
+  try{
+    const meta = await ghApi(ctx.token, `/contents/${ctx.publishedDir}/${ctx.slug}.json?ref=main`);
+    const parsed = JSON.parse(atob(meta.content.replace(/\n/g,'')));
+    return { posted:true, link: (parsed.wordpress && parsed.wordpress.link) || '' };
+  }catch(e){ /* not published (404), or a transient API hiccup — fall through */ }
+  let stillPending = false;
+  try{
+    await ghApi(ctx.token, `/contents/${ctx.pendingPath}?ref=main`);
+    stillPending = true;
+  }catch(e){ /* not sitting in pending either */ }
+  return { posted:false, stillPending };
+}
+function showPipelineActions(showRetry){
+  const wrap = document.getElementById('pipelineActions');
+  if(wrap) wrap.style.display = 'flex';
+  const retryBtn = document.getElementById('pipelineRetryBtn');
+  if(retryBtn) retryBtn.style.display = showRetry ? '' : 'none';
+}
+function hidePipelineActions(){
+  const wrap = document.getElementById('pipelineActions');
+  if(wrap) wrap.style.display = 'none';
+  const m = document.getElementById('pipelineActionsMsg');
+  if(m){ m.className = 'msg'; m.textContent = ''; }
+}
+function applyResolvedStatus(status){
+  if(status.posted){
+    setStepState('pStepActions','done','GitHub Actions finished');
+    document.getElementById('pStepWp').className = 'pstep done';
+    document.getElementById('pStepWpTxt').innerHTML = status.link
+      ? `Published to WordPress as a draft — <a href="${status.link}" target="_blank" rel="noopener">view draft ↗</a>`
+      : 'Published to WordPress as a draft ✓';
+    setPipelinePct(100,'done');
+    hidePipelineActions();
+    return true;
+  }
+  setStepState('pStepWp','bad', status.stillPending
+    ? 'Not published yet — the run may have failed partway. Tap "Retry publish" below, or "Check status" again in a bit.'
+    : 'Could not confirm whether this posted — tap "Check status" to look again, or "Retry publish" (safe even if it already posted — it just skips a slug that\'s already live).');
+  setPipelinePct(66,'bad');
+  showPipelineActions(true);
+  return false;
+}
+async function checkPublishStatus(){
+  if(!pipelineCtx) return;
+  const m = msg('pipelineActionsMsg');
+  show(m,'warn','Checking…');
+  try{
+    const status = await resolvePublishStatus(pipelineCtx);
+    const posted = applyResolvedStatus(status);
+    show(m, posted?'ok':'warn', posted ? 'Confirmed — it is published.' : (status.stillPending ? 'Still not published yet.' : 'Still unconfirmed — try again shortly.'));
+  }catch(e){ show(m,'bad','Check failed: '+e.message); }
+}
+async function retryPublish(){
+  if(!pipelineCtx) return;
+  const m = msg('pipelineActionsMsg');
+  show(m,'warn','Triggering a retry…');
+  try{
+    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/${pipelineCtx.workflowFile}/dispatches`, {
+      method:'POST',
+      headers:{ 'Authorization':'token '+pipelineCtx.token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+      body: JSON.stringify({ ref:'main', inputs:{ file: pipelineCtx.pendingPath } })
+    });
+    if(!res.ok) throw new Error('GitHub API '+res.status);
+    show(m,'ok','Retry triggered — checking again shortly…');
+    setStepState('pStepActions','wait','Retrying…');
+    setStepState('pStepWp','wait','Publishing to WordPress…');
+    await sleep(8000);
+    for(let i=0;i<24;i++){ // up to ~2 min
+      const status = await resolvePublishStatus(pipelineCtx).catch(()=>({posted:false,stillPending:true}));
+      if(status.posted){ applyResolvedStatus(status); return; }
+      await sleep(5000);
+    }
+    applyResolvedStatus({ posted:false, stillPending:true });
+  }catch(e){ show(m,'bad','Retry failed: '+e.message); }
+}
+
 async function trackPipeline(token, sha){
   const slug = state.seo.slug;
+  const ctx = { token, slug, pendingPath:`pending-long-posts/${slug}.json`, publishedDir:'published-long-posts', workflowFile:'pub-lpost.yml' };
+  pipelineCtx = ctx;
   const wrap = document.getElementById('pipelineWrap');
   wrap.style.display = '';
   wrap.classList.remove('open');
   document.getElementById('pipelineMiniLabel').textContent = 'Publishing: ' + slug;
   const hint = document.getElementById('pipelineHint');
   if(hint) hint.style.display = '';
+  hidePipelineActions();
   setPipelinePct(33);
   setStepState('pStepGit','done','Added to GitHub');
   setStepState('pStepActions','wait','GitHub Actions running…');
   setStepState('pStepWp','','Published to WordPress (draft)');
-
-  const startedAt = new Date().toISOString();
 
   // --- stage 2: find and watch the Actions run triggered by this commit ---
   let run = null;
@@ -2582,8 +2695,9 @@ async function trackPipeline(token, sha){
     if(!run) await sleep(5000);
   }
   if(!run){
-    setStepState('pStepActions','bad','Could not find the Actions run — check the repo\'s Actions tab manually.');
-    setPipelinePct(33,'bad');
+    // couldn't even find the run — don't declare failure, check the real state
+    setStepState('pStepActions','bad','Could not find the Actions run — checking whether it posted anyway…');
+    applyResolvedStatus(await resolvePublishStatus(ctx));
     return;
   }
   for(let i=0;i<36;i++){ // up to ~3 min
@@ -2592,43 +2706,26 @@ async function trackPipeline(token, sha){
     await sleep(5000);
   }
   if(run.status !== 'completed' || run.conclusion !== 'success'){
-    setStepState('pStepActions','bad', run.status==='completed' ? `Actions run finished with "${run.conclusion}" — check the Actions tab.` : 'Actions run is taking longer than expected — check the Actions tab.');
-    setPipelinePct(33,'bad');
+    // A non-"success" Actions run does NOT mean the WordPress draft wasn't
+    // created — a late step (the documented git-push race, or content-memory
+    // bookkeeping) can fail AFTER the post already went live. Check the real
+    // state instead of taking the run's conclusion at face value.
+    setStepState('pStepActions','bad', run.status==='completed' ? `Actions run finished with "${run.conclusion}" — checking whether it posted anyway…` : 'Actions run is taking longer than expected — checking whether it posted anyway…');
+    applyResolvedStatus(await resolvePublishStatus(ctx));
     return;
   }
   setStepState('pStepActions','done','GitHub Actions finished');
   setPipelinePct(66);
 
-  // --- stage 3: watch for the "Publish long post(s) to WordPress" commit on main ---
+  // --- stage 3: poll the actual published-long-posts/<slug>.json file, the
+  // one thing that's actually true regardless of what the run or commit log say ---
   setStepState('pStepWp','wait','Publishing to WordPress…');
-  let published = null;
-  for(let i=0;i<24 && !published;i++){ // up to ~2 min
-    try{
-      const commits = await ghApi(token, `/commits?sha=main&since=${encodeURIComponent(startedAt)}&per_page=10`);
-      published = commits.find(c => /Publish long post\(s\) to WordPress/i.test(c.commit.message));
-    }catch(e){ /* keep trying */ }
-    if(!published) await sleep(5000);
+  let status = { posted:false };
+  for(let i=0;i<24 && !status.posted; i++){ // up to ~2 min
+    status = await resolvePublishStatus(ctx).catch(()=>({posted:false}));
+    if(!status.posted) await sleep(5000);
   }
-  if(!published){
-    setStepState('pStepWp','bad','No WordPress-publish commit seen yet — it may still be running, check back shortly.');
-    setPipelinePct(66,'bad');
-    return;
-  }
-  setPipelinePct(100,'done');
-
-  // best-effort: fetch published-long-posts/<slug>.json for the direct draft link
-  let link = '';
-  try{
-    const meta = await ghApi(token, `/contents/published-long-posts/${slug}.json?ref=main`);
-    const parsed = JSON.parse(atob(meta.content.replace(/\n/g,'')));
-    link = parsed.wordpress && parsed.wordpress.link;
-  }catch(e){ /* the link is a nice-to-have, not worth failing the step over */ }
-
-  const stepEl = document.getElementById('pStepWp');
-  stepEl.className = 'pstep done';
-  document.getElementById('pStepWpTxt').innerHTML = link
-    ? `Published to WordPress as a draft — <a href="${link}" target="_blank" rel="noopener">view draft ↗</a>`
-    : 'Published to WordPress as a draft ✓';
+  applyResolvedStatus(status);
 }
 
 function downloadBundle(btn){

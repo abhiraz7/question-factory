@@ -155,7 +155,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   .bodyPane{display:none}
   .bodyPane.on{display:block}
   .bodyPane textarea{min-height:280px}
-  .bodyPane .previewFrame{height:420px}
+  .bodyPane .previewFrame{height:640px;resize:vertical;overflow:auto}
   .bodyEditor.fullscreen{position:fixed;inset:0;z-index:200;border-radius:0;margin:0;display:flex;flex-direction:column;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
   .bodyEditor.fullscreen .bodyPane{flex:1;display:none;min-height:0}
   .bodyEditor.fullscreen .bodyPane.on{display:flex;flex-direction:column}
@@ -163,8 +163,8 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
   /* mobile is the primary target: collapse side-by-side fields on narrow phones */
   @media (max-width:420px){
     .row2{grid-template-columns:1fr}
-    .previewFrame{height:300px}
-    .bodyPane .previewFrame{height:320px}
+    .previewFrame{height:460px}
+    .bodyPane .previewFrame{height:460px}
     .bodyPane textarea{min-height:220px}
     .bodyEditorHead b{width:100%;order:-1}
   }
@@ -382,6 +382,18 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
       <textarea id="fImagePrompt" style="min-height:70px;font-family:inherit;font-size:14px"></textarea></details>
   </div>
 
+  <fieldset id="featuredImageFieldset" style="margin-top:16px">
+    <legend>🖼️ Featured image</legend>
+    <p class="hint" style="margin-top:0">Copy the Generation Prompt above into Gemini/ChatGPT, generate the image there, then bring the result back here — paste it (Ctrl+V) or pick the file. This strips EXIF/metadata and resizes it client-side (nothing uploads until you save in Step 4); on save it's committed alongside the note and the publish workflow uploads it to WordPress, sets it as the featured image and its ALT text.</p>
+    <div id="imageDropZone" tabindex="0" style="border:1.5px dashed var(--line);border-radius:var(--radius-sm);padding:16px;text-align:center;cursor:pointer;background:var(--card-2)">
+      <div style="font-size:13px;color:var(--ink-soft)">Tap to choose a file, or paste an image here</div>
+      <input type="file" id="featuredImageFile" accept="image/*" style="display:none">
+    </div>
+    <img id="featuredImagePreview" style="display:none;max-width:100%;border-radius:var(--radius-sm);margin-top:10px;border:1px solid var(--line)">
+    <div class="msg" id="imageMsg"></div>
+    <button class="btn small ghost" id="removeImageBtn" onclick="tryRun(removeFeaturedImage,this)" style="display:none;margin-top:8px">✕ Remove image</button>
+  </fieldset>
+
   <div class="bodyEditor" id="bodyEditorCard">
     <div class="bodyEditorHead">
       <b>📄 Notes body — <span id="bodyWords">0</span> words</b>
@@ -474,6 +486,11 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <div class="pstep" id="pStepActions"><span class="dot">2</span><span id="pStepActionsTxt">GitHub Actions running</span></div>
     <div class="pstep" id="pStepWp"><span class="dot">3</span><span id="pStepWpTxt">Published to WordPress (draft)</span></div>
   </div>
+  <div class="pipeline-actions" id="pipelineActions" style="display:none;margin-top:10px;gap:8px">
+    <button type="button" class="btn small ghost" style="margin:0" onclick="tryRun(()=>checkPublishStatus(),this)">🔄 Check status</button>
+    <button type="button" class="btn small" id="pipelineRetryBtn" style="margin:0;display:none" onclick="tryRun(()=>retryPublish(),this)">🔁 Retry publish</button>
+  </div>
+  <div class="msg" id="pipelineActionsMsg" style="margin-top:6px"></div>
 </div>
 
 <nav class="bot">
@@ -1298,7 +1315,7 @@ function clearShareBlock(containerId){
 /* ================= STEP 1 — build prompt ================= */
 var masterPromptText = null;
 var builtPromptText = null;
-var state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null };
+var state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null, featuredImage:null };
 
 function updateLangMixLabel(){
   const hindi = document.getElementById('hindiPercent').value;
@@ -1422,7 +1439,7 @@ CRITICAL RENDERING RULE: every block's content (including the HTML body and the 
 
 ADDITIVE FIELDS — two extra SEO_JSON fields beyond what's specified above:
 - "imageAltText": ONE ALT text string for the featured/OG image, from whichever visual best represents the topic — contains the Focus Keyphrase or a close variant plus a concrete description of what the image shows.
-- "imagePrompt": a complete, ready-to-paste AI image-generation prompt for that image. Style: **loud, high-CTR YouTube-thumbnail graphic, never clean/minimal/corporate** — exaggerated expression on a student/teacher character, saturated colors, high contrast, a punchy focal object tied to the topic, dramatic lighting, thick outlines. 16:9, WordPress featured-image format, NO readable text/typography baked in (the title is overlaid separately).
+- "imagePrompt": a complete, ready-to-paste AI image-generation prompt for that image. Style: **clean, handwritten-notebook / teacher's-whiteboard study-notes graphic, never loud/clickbait/YouTube-thumbnail** — a neat notebook page or classroom whiteboard background, hand-drawn-style headings and underlines, small relevant doodles/icons/sketches tied to the topic, color-coded sections connected by arrows, a boxed summary corner. Warm highlighter-color accents, soft even lighting, thin clean linework. 16:9, WordPress featured-image format, NO actual readable words/sentences baked in — only decorative handwriting-style marks/icons, since AI-rendered text comes out garbled (the real title is overlaid separately).
 
 <<<SEO_JSON>>>
 \`\`\`json
@@ -2453,6 +2470,7 @@ function fillReviewForm(){
   document.getElementById('fImagePrompt').value = state.seo.imagePrompt || '';
   document.getElementById('fBodyHtml').value = state.bodyHtml || '';
   document.getElementById('fPublisherNotes').value = state.publisherNotes || '';
+  showImagePreview(state.featuredImage);
 }
 function syncFormToState(){
   state.seo = {
@@ -2469,13 +2487,115 @@ function syncFormToState(){
   saveDraft();
 }
 
+/* ================= FEATURED IMAGE — capture, strip metadata, resize =================
+   The image itself is generated externally (copy the Image Generation Prompt
+   above into Gemini/ChatGPT/etc, the user pastes the result back here) — this
+   tool never calls an image-generation API. What it does do: re-encode the
+   picked/pasted file through a <canvas>, which inherently drops EXIF/IPTC/XMP
+   metadata (canvas export never carries it forward — there's no separate
+   "strip" step needed), cap it to a sane width, and hand it to the save flow
+   as a base64 payload committed alongside the note. The publish workflow
+   uploads it to WordPress and sets it as the featured image + ALT text. */
+const FEATURED_IMAGE_MAX_WIDTH = 1600;
+const INLINE_IMAGE_MAX_WIDTH = 900;
+function stripImageMetadataAndResize(file, maxWidth){
+  maxWidth = maxWidth || FEATURED_IMAGE_MAX_WIDTH;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const mime = 'image/jpeg';
+        const dataUrl = canvas.toDataURL(mime, 0.87);
+        resolve({ dataUrl, mime, ext:'jpg', width:w, height:h });
+      };
+      img.onerror = ()=>reject(new Error('Could not read that as an image — try a different file.'));
+      img.src = reader.result;
+    };
+    reader.onerror = ()=>reject(new Error('Could not read the file.'));
+    reader.readAsDataURL(file);
+  });
+}
+async function handleFeaturedImageFile(file){
+  const m = msg('imageMsg');
+  if(!file || !file.type || !file.type.startsWith('image/')){ show(m,'bad','That is not an image file.'); return; }
+  show(m,'warn','Processing image (stripping metadata, resizing)…');
+  try{
+    const result = await stripImageMetadataAndResize(file);
+    state.featuredImage = result;
+    saveDraft();
+    showImagePreview(result);
+    show(m,'ok',`Image ready (${result.width}×${result.height}, metadata stripped) — it uploads to WordPress and becomes the featured image when you save in Step 4.`);
+  }catch(e){ show(m,'bad', e.message); }
+}
+function showImagePreview(img){
+  const el = document.getElementById('featuredImagePreview');
+  const removeBtn = document.getElementById('removeImageBtn');
+  if(!el) return;
+  if(img && img.dataUrl){
+    el.src = img.dataUrl; el.style.display = '';
+    if(removeBtn) removeBtn.style.display = '';
+  } else {
+    el.style.display = 'none'; el.removeAttribute('src');
+    if(removeBtn) removeBtn.style.display = 'none';
+  }
+}
+function clearImagePreview(){ showImagePreview(null); const m=msg('imageMsg'); if(m){ m.className='msg'; m.textContent=''; } }
+function removeFeaturedImage(){
+  state.featuredImage = null;
+  saveDraft();
+  clearImagePreview();
+  const fileInput = document.getElementById('featuredImageFile');
+  if(fileInput) fileInput.value = '';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const dropZone = document.getElementById('imageDropZone');
+  const fileInput = document.getElementById('featuredImageFile');
+  if(!dropZone || !fileInput) return;
+  dropZone.addEventListener('click', ()=> fileInput.click());
+  dropZone.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', function(){
+    const f = this.files && this.files[0];
+    if(f) tryRun(()=>handleFeaturedImageFile(f));
+  });
+  dropZone.addEventListener('paste', e=>{
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(i=>i.type && i.type.startsWith('image/'));
+    if(item) tryRun(()=>handleFeaturedImageFile(item.getAsFile()));
+  });
+  document.addEventListener('paste', e=>{
+    // also catch a paste anywhere on Step 3, not just when the drop zone has focus —
+    // matches how mobile "paste" actually gets triggered from a long-press menu
+    if(cur !== 2) return;
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(i=>i.type && i.type.startsWith('image/'));
+    if(item) tryRun(()=>handleFeaturedImageFile(item.getAsFile()));
+  });
+  ['dragover','dragenter'].forEach(evt=> dropZone.addEventListener(evt, e=>{ e.preventDefault(); dropZone.style.borderColor='var(--accent)'; }));
+  ['dragleave','drop'].forEach(evt=> dropZone.addEventListener(evt, e=>{ e.preventDefault(); dropZone.style.borderColor='var(--line)'; }));
+  dropZone.addEventListener('drop', e=>{
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) tryRun(()=>handleFeaturedImageFile(f));
+  });
+});
+
 /* ---------- draft autosave: survives an accidental refresh/tab close mid-review ---------- */
 const DRAFT_KEY = 'nf_draft_v1';
 let saveDraftTimer = null;
 function saveDraft(){
   clearTimeout(saveDraftTimer);
   saveDraftTimer = setTimeout(()=>{
-    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({state, cur})); }catch(e){}
+    // the featured image's dataUrl can be several hundred KB to a few MB —
+    // persisting it would risk blowing the shared per-origin localStorage
+    // quota (and taking the whole draft down with it), so the draft keeps
+    // only the image's metadata; a refresh loses the picked image itself
+    // and the user re-picks it, but never loses the note text.
+    const { featuredImage, ...rest } = state;
+    const lightState = { ...rest, featuredImage: featuredImage ? { mime:featuredImage.mime, ext:featuredImage.ext, width:featuredImage.width, height:featuredImage.height, pending:true } : null };
+    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({state:lightState, cur})); }catch(e){}
   }, 400);
 }
 function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
@@ -2490,6 +2610,8 @@ function restoreDraftIfAny(){
   if(!confirm('Restore your last unsaved draft — "'+label+'"?')){ clearDraft(); return; }
   state = s;
   cur = data.cur || 0;
+  const imageWasDropped = !!(state.featuredImage && state.featuredImage.pending);
+  if(imageWasDropped) state.featuredImage = null;
   document.getElementById('topic').value = state.topic || '';
   document.querySelectorAll('.examChk').forEach(c => c.checked = state.examType ? state.examType.split(' / ').includes(c.value) : c.checked);
   document.getElementById('subject').value = state.subject || 'Auto-detect';
@@ -2498,6 +2620,7 @@ function restoreDraftIfAny(){
   document.getElementById('deliveryPref').value = state.deliveryPref || 'zip';
   if(state.validation && state.validation.result) renderValidationResults(state.validation.result);
   updatePublishGate();
+  if(imageWasDropped) show(msg('imageMsg'),'warn','Your draft was restored, but the featured image itself is not saved across a refresh — pick or paste it again in Step 3.');
 }
 function copyReviewField(e, id, label){
   /* the copy button lives inside a <summary> — stop the click from also
@@ -2532,7 +2655,7 @@ function attachPreviewEditing(frame){
   const style = doc.createElement('style');
   style.textContent = 'body[contenteditable="true"]{cursor:text} body[contenteditable="true"]:focus{outline:2px dashed #2563eb;outline-offset:-2px}';
   doc.head.appendChild(style);
-  doc.body.addEventListener('input', () => {
+  const syncFromPreview = () => {
     const html = doc.body.innerHTML;
     const ta = document.getElementById('fBodyHtml');
     if(ta) ta.value = html;
@@ -2542,6 +2665,24 @@ function attachPreviewEditing(frame){
     const bw = document.getElementById('bodyWords');
     if(bw) bw.textContent = words.toLocaleString();
     saveDraft();
+  };
+  doc.body.addEventListener('input', syncFromPreview);
+  // Paste an image straight into the body text, right where the cursor is —
+  // no separate upload step. Resized/re-encoded through the same canvas
+  // path as the featured image (so EXIF/metadata is stripped the same way),
+  // just capped narrower since this is an inline diagram, not a hero image,
+  // then inserted as a plain data-URL <img> at the caret via execCommand so
+  // it lands inside whatever paragraph/card the cursor is in.
+  doc.body.addEventListener('paste', e=>{
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(i=>i.type && i.type.startsWith('image/'));
+    if(!item) return; // let normal text paste proceed untouched
+    e.preventDefault();
+    const file = item.getAsFile();
+    stripImageMetadataAndResize(file, INLINE_IMAGE_MAX_WIDTH).then(result=>{
+      const html = '<img src="'+result.dataUrl+'" alt="" style="max-width:100%;height:auto;display:block;margin:14px auto;border-radius:6px">';
+      doc.execCommand('insertHTML', false, html);
+      syncFromPreview();
+    }).catch(err=>{ show(msg('reviewMsg'),'bad','Could not paste that image: '+err.message); });
   });
 }
 function updatePreview(){
@@ -2687,6 +2828,24 @@ async function githubPutFile(owner, repo, token, path, content, message){
   return putRes.json();
 }
 
+/* Same as githubPutFile but for content that's already base64 (images) —
+   githubPutFile always UTF-8-encodes text first, which would corrupt binary
+   data, so this skips that step and sends the raw base64 payload straight
+   through to the Contents API. */
+async function githubPutBinaryFile(owner, repo, token, path, base64Content, message){
+  const api = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
+  const headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' };
+  let sha;
+  const getRes = await fetch(api + '?ref=main', { headers });
+  if(getRes.status === 200){ sha = (await getRes.json()).sha; }
+  else if(getRes.status !== 404){ throw new Error(`GitHub check failed (${getRes.status}): ${(await getRes.text()).slice(0,200)}`); }
+  const body = { message, content: base64Content, branch: 'main' };
+  if(sha) body.sha = sha;
+  const putRes = await fetch(api, { method:'PUT', headers: {...headers,'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if(!putRes.ok){ throw new Error(`GitHub image save failed (${putRes.status}): ${(await putRes.text()).slice(0,300)}`); }
+  return putRes.json();
+}
+
 async function autoSaveToGithub(btn){
   syncFormToState();
   const m = msg('sendMsg');
@@ -2723,7 +2882,18 @@ async function autoSaveToGithub(btn){
     const res = await githubPutFile(GH_OWNER, GH_REPO, token, path, JSON.stringify(bundle, null, 2), `Add note: ${state.seo.slug}`);
     document.getElementById('dlSlug').textContent = state.seo.slug;
     const sha = res.commit && res.commit.sha;
-    show(m,'ok',`Saved to ${path} — tracking the pipeline below.`);
+    let imageNote = '';
+    if(state.featuredImage && state.featuredImage.dataUrl){
+      try{
+        show(m,'warn','Note saved — uploading featured image…');
+        const base64Only = state.featuredImage.dataUrl.split(',')[1];
+        await githubPutBinaryFile(GH_OWNER, GH_REPO, token, `pending-notes/${state.seo.slug}.${state.featuredImage.ext}`, base64Only, `Add featured image: ${state.seo.slug}`);
+        imageNote = ' + featured image';
+      }catch(imgErr){
+        imageNote = ' (featured image upload failed: '+imgErr.message+' — the note itself still saved fine; the publish workflow will just skip the featured image for this run)';
+      }
+    }
+    show(m,'ok',`Saved to ${path}${imageNote} — tracking the pipeline below.`);
     clearDraft();
     trackPipeline(token, sha);
   }catch(e){
@@ -2785,13 +2955,18 @@ async function addToQueue(btn){
     updatePublishGate();
     return;
   }
+  if(state.featuredImage){
+    show(m,'bad','This note has a featured image attached — the batch queue does not carry images yet (they would be silently lost). Use "Auto-save to GitHub" above instead for notes with an image.');
+    return;
+  }
   const q = loadQueue();
   if(q.some(item=>item.slug===state.seo.slug)){ show(m,'bad',`"${state.seo.slug}" is already in the queue.`); return; }
   q.push({ slug: state.seo.slug, bundle: buildBundle() });
   saveQueueList(q);
   show(m,'ok',`Added "${state.seo.slug}" to the batch queue (${q.length} queued). Start the next note at Step 1, or post the queue when everyone's done.`);
   clearDraft();
-  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null };
+  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null, featuredImage:null };
+  clearImagePreview();
   clearUpdateMode(); // otherwise the next note silently starts in "update mode" (stale oldSeo/oldBodyHtml/wordpress) with the old file name and success banner still showing
   document.getElementById('bodyEditorCard').classList.remove('fullscreen');
   setBodyEditMode('visual');
@@ -2854,20 +3029,108 @@ function closePipelineMini(){
    works on another note — takes its own slug snapshot rather than reading
    live state, since state.seo.slug may belong to a different note by the
    time this finishes */
+/* Pipeline tracker's authoritative source of truth: does
+   published-notes/<slug>.json actually exist on GitHub? The Actions-run
+   status and commit-message polling below are just progress indicators —
+   a run can finish with "failure" (the documented git-push-race in
+   pub-note.yml, or a late content-memory bookkeeping hiccup) AFTER the
+   WordPress draft was already created successfully, which used to show up
+   here as a flat "fail" even though the note had posted. This function is
+   what both the automatic fallback and the manual "Check status"/"Retry"
+   buttons call to find out what's actually true. */
+let pipelineCtx = null; // {token, slug, pendingPath, publishedDir, workflowFile}
+async function resolvePublishStatus(ctx){
+  try{
+    const meta = await ghApi(ctx.token, `/contents/${ctx.publishedDir}/${ctx.slug}.json?ref=main`);
+    const parsed = JSON.parse(atob(meta.content.replace(/\n/g,'')));
+    return { posted:true, link: (parsed.wordpress && parsed.wordpress.link) || '' };
+  }catch(e){ /* not published (404), or a transient API hiccup — fall through */ }
+  let stillPending = false;
+  try{
+    await ghApi(ctx.token, `/contents/${ctx.pendingPath}?ref=main`);
+    stillPending = true;
+  }catch(e){ /* not sitting in pending either */ }
+  return { posted:false, stillPending };
+}
+function showPipelineActions(showRetry){
+  const wrap = document.getElementById('pipelineActions');
+  if(wrap) wrap.style.display = 'flex';
+  const retryBtn = document.getElementById('pipelineRetryBtn');
+  if(retryBtn) retryBtn.style.display = showRetry ? '' : 'none';
+}
+function hidePipelineActions(){
+  const wrap = document.getElementById('pipelineActions');
+  if(wrap) wrap.style.display = 'none';
+  const m = document.getElementById('pipelineActionsMsg');
+  if(m){ m.className = 'msg'; m.textContent = ''; }
+}
+function applyResolvedStatus(status){
+  if(status.posted){
+    setStepState('pStepActions','done','GitHub Actions finished');
+    document.getElementById('pStepWp').className = 'pstep done';
+    document.getElementById('pStepWpTxt').innerHTML = status.link
+      ? `Published to WordPress as a draft — <a href="${status.link}" target="_blank" rel="noopener">view draft ↗</a>`
+      : 'Published to WordPress as a draft ✓';
+    setPipelinePct(100,'done');
+    hidePipelineActions();
+    return true;
+  }
+  setStepState('pStepWp','bad', status.stillPending
+    ? 'Not published yet — the run may have failed partway. Tap "Retry publish" below, or "Check status" again in a bit.'
+    : 'Could not confirm whether this posted — tap "Check status" to look again, or "Retry publish" (safe even if it already posted — it just skips a slug that\'s already live).');
+  setPipelinePct(66,'bad');
+  showPipelineActions(true);
+  return false;
+}
+async function checkPublishStatus(){
+  if(!pipelineCtx) return;
+  const m = msg('pipelineActionsMsg');
+  show(m,'warn','Checking…');
+  try{
+    const status = await resolvePublishStatus(pipelineCtx);
+    const posted = applyResolvedStatus(status);
+    show(m, posted?'ok':'warn', posted ? 'Confirmed — it is published.' : (status.stillPending ? 'Still not published yet.' : 'Still unconfirmed — try again shortly.'));
+  }catch(e){ show(m,'bad','Check failed: '+e.message); }
+}
+async function retryPublish(){
+  if(!pipelineCtx) return;
+  const m = msg('pipelineActionsMsg');
+  show(m,'warn','Triggering a retry…');
+  try{
+    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/${pipelineCtx.workflowFile}/dispatches`, {
+      method:'POST',
+      headers:{ 'Authorization':'token '+pipelineCtx.token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+      body: JSON.stringify({ ref:'main', inputs:{ file: pipelineCtx.pendingPath } })
+    });
+    if(!res.ok) throw new Error('GitHub API '+res.status);
+    show(m,'ok','Retry triggered — checking again shortly…');
+    setStepState('pStepActions','wait','Retrying…');
+    setStepState('pStepWp','wait','Publishing to WordPress…');
+    await sleep(8000);
+    for(let i=0;i<24;i++){ // up to ~2 min
+      const status = await resolvePublishStatus(pipelineCtx).catch(()=>({posted:false,stillPending:true}));
+      if(status.posted){ applyResolvedStatus(status); return; }
+      await sleep(5000);
+    }
+    applyResolvedStatus({ posted:false, stillPending:true });
+  }catch(e){ show(m,'bad','Retry failed: '+e.message); }
+}
+
 async function trackPipeline(token, sha){
   const slug = state.seo.slug;
+  const ctx = { token, slug, pendingPath:`pending-notes/${slug}.json`, publishedDir:'published-notes', workflowFile:'pub-note.yml' };
+  pipelineCtx = ctx;
   const wrap = document.getElementById('pipelineWrap');
   wrap.style.display = '';
   wrap.classList.remove('open');
   document.getElementById('pipelineMiniLabel').textContent = 'Publishing: ' + slug;
   const hint = document.getElementById('pipelineHint');
   if(hint) hint.style.display = '';
+  hidePipelineActions();
   setPipelinePct(33);
   setStepState('pStepGit','done','Added to GitHub');
   setStepState('pStepActions','wait','GitHub Actions running…');
   setStepState('pStepWp','','Published to WordPress (draft)');
-
-  const startedAt = new Date().toISOString();
 
   // --- stage 2: find and watch the Actions run triggered by this commit ---
   let run = null;
@@ -2879,8 +3142,9 @@ async function trackPipeline(token, sha){
     if(!run) await sleep(5000);
   }
   if(!run){
-    setStepState('pStepActions','bad','Could not find the Actions run — check the repo\'s Actions tab manually.');
-    setPipelinePct(33,'bad');
+    // couldn't even find the run — don't declare failure, check the real state
+    setStepState('pStepActions','bad','Could not find the Actions run — checking whether it posted anyway…');
+    applyResolvedStatus(await resolvePublishStatus(ctx));
     return;
   }
   for(let i=0;i<36;i++){ // up to ~3 min
@@ -2889,43 +3153,26 @@ async function trackPipeline(token, sha){
     await sleep(5000);
   }
   if(run.status !== 'completed' || run.conclusion !== 'success'){
-    setStepState('pStepActions','bad', run.status==='completed' ? `Actions run finished with "${run.conclusion}" — check the Actions tab.` : 'Actions run is taking longer than expected — check the Actions tab.');
-    setPipelinePct(33,'bad');
+    // A non-"success" Actions run does NOT mean the WordPress draft wasn't
+    // created — a late step (the documented git-push race, or content-memory
+    // bookkeeping) can fail AFTER the post already went live. Check the real
+    // state instead of taking the run's conclusion at face value.
+    setStepState('pStepActions','bad', run.status==='completed' ? `Actions run finished with "${run.conclusion}" — checking whether it posted anyway…` : 'Actions run is taking longer than expected — checking whether it posted anyway…');
+    applyResolvedStatus(await resolvePublishStatus(ctx));
     return;
   }
   setStepState('pStepActions','done','GitHub Actions finished');
   setPipelinePct(66);
 
-  // --- stage 3: watch for the "Publish note(s) to WordPress" commit on main ---
+  // --- stage 3: poll the actual published-notes/<slug>.json file, the one
+  // thing that's actually true regardless of what the run or commit log say ---
   setStepState('pStepWp','wait','Publishing to WordPress…');
-  let published = null;
-  for(let i=0;i<24 && !published;i++){ // up to ~2 min
-    try{
-      const commits = await ghApi(token, `/commits?sha=main&since=${encodeURIComponent(startedAt)}&per_page=10`);
-      published = commits.find(c => /Publish note\(s\) to WordPress/i.test(c.commit.message));
-    }catch(e){ /* keep trying */ }
-    if(!published) await sleep(5000);
+  let status = { posted:false };
+  for(let i=0;i<24 && !status.posted; i++){ // up to ~2 min
+    status = await resolvePublishStatus(ctx).catch(()=>({posted:false}));
+    if(!status.posted) await sleep(5000);
   }
-  if(!published){
-    setStepState('pStepWp','bad','No WordPress-publish commit seen yet — it may still be running, check back shortly.');
-    setPipelinePct(66,'bad');
-    return;
-  }
-  setPipelinePct(100,'done');
-
-  // best-effort: fetch published-notes/<slug>.json for the direct draft link
-  let link = '';
-  try{
-    const meta = await ghApi(token, `/contents/published-notes/${slug}.json?ref=main`);
-    const parsed = JSON.parse(atob(meta.content.replace(/\n/g,'')));
-    link = parsed.wordpress && parsed.wordpress.link;
-  }catch(e){ /* the link is a nice-to-have, not worth failing the step over */ }
-
-  const stepEl = document.getElementById('pStepWp');
-  stepEl.className = 'pstep done';
-  document.getElementById('pStepWpTxt').innerHTML = link
-    ? `Published to WordPress as a draft — <a href="${link}" target="_blank" rel="noopener">view draft ↗</a>`
-    : 'Published to WordPress as a draft ✓';
+  applyResolvedStatus(status);
 }
 
 function downloadBundle(btn){
@@ -3027,7 +3274,8 @@ Image Gen Prompt:    ${state.seo.imagePrompt || ''}`;
 }
 function resetAll(){
   if(!confirm('Clear this note and start over?')) return;
-  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null };
+  state = { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, deliveryPref:'zip', validation:null, featuredImage:null };
+  clearImagePreview();
   clearUpdateMode(); // same reason as addToQueue() — otherwise stale oldSeo/oldBodyHtml/wordpress and the old "Loaded ... for update" banner survive into the fresh note
   accumulatedRaw = '';
   clearDraft();
