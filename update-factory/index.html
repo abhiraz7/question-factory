@@ -261,29 +261,9 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     </div>
   </details>
 
-  <fieldset style="margin-top:14px">
-    <legend>🔍 1a · Review first — find what's actually wrong</legend>
-    <p class="hint" style="margin-top:0">Instead of rewriting the whole article, first ask the AI to audit it against this site's full documented failure-pattern list — fabricated stats, unverifiable sources, generic SEO, casual AI-chatbot voice, exam-trap-first framing, orphan citations, missing visuals/internal links, unnatural Hindi, template-sameness, and more. You approve which flags are real before anything gets rewritten.</p>
-    <button class="btn" onclick="tryRun(copyReviewPrompt,this)">🔍 Build REVIEW prompt</button>
-    <button class="btn ghost" onclick="tryRun(copyWholeReviewPrompt,this)">🖥️ Copy whole prompt (PC only)</button>
-    <div class="msg" id="reviewPromptMsg"></div>
-    <textarea id="reviewPromptOut" style="display:none"></textarea>
-    <details id="reviewPartsWrap"><summary>📱 Copy the review prompt in parts (mobile)</summary><div>
-      <div id="reviewPartsButtons"></div>
-    </div></details>
-
-    <label style="margin-top:12px">Paste the AI's review reply here</label>
-    <textarea id="reviewRawIn" style="min-height:40vh" placeholder="Paste the AI's <<<REVIEW_JSON>>> reply here…"></textarea>
-    <button class="btn ghost" onclick="tryRun(parseReviewReply,this)">✅ Parse review</button>
-    <div class="msg" id="reviewParseMsg"></div>
-    <div id="reviewFlagsWrap" style="margin-top:10px"></div>
-  </fieldset>
-
-  <fieldset id="updatePromptFieldset" style="margin-top:14px;display:none">
-    <legend>✍️ 1b · Build the update prompt — approved fixes only</legend>
-    <p class="hint" style="margin-top:0">This hands the AI ONLY the flags you approved above, and tells it to make targeted fixes — not rewrite sections that weren't flagged.</p>
-    <label style="font-weight:500;margin-top:0"><input type="checkbox" id="continueSameChat" checked style="width:auto;margin-right:6px">I'm continuing in the SAME chat where I sent the review prompt — skip resending the old article (it already saw it above)</label>
-    <p class="hint" id="continueSameChatHint" style="margin-top:4px">Uncheck this only if you're starting a fresh chat (new tab, different AI, or the old one lost context) — then the full old article gets resent so the AI has something to patch.</p>
+  <fieldset id="updatePromptFieldset" style="margin-top:14px">
+    <legend>✍️ Build UPDATE prompt — audits and patches in one step</legend>
+    <p class="hint" style="margin-top:0">One prompt does both jobs: the AI audits this article against this site's full documented failure-pattern list — fabricated stats, unverifiable sources, generic SEO, casual AI-chatbot voice, exam-trap-first framing, orphan citations, missing visuals/internal links, unnatural Hindi, template-sameness, and more — and fixes only what it actually finds broken, in the same reply. It will not rewrite anything that isn't genuinely wrong. What it changed (and why) comes back in Publisher Notes, so you can review it after the fact instead of approving flags beforehand.</p>
     <button class="btn" onclick="tryRun(copyPrompt,this)">✍️ Build UPDATE prompt</button>
     <button class="btn ghost" onclick="tryRun(copyWholePrompt,this)">🖥️ Copy whole prompt (PC only)</button>
     <div class="msg" id="pMsg"></div>
@@ -677,13 +657,6 @@ function selectPublishedItem(idx){
   state.oldBodyHtml = old.bodyHtml;
   state.wordpress = old.wordpress;
   state.sourceDir = it.dir; state.sourceName = it.name;
-  // a fresh post selection invalidates any review from a previous post
-  state.reviewFlags = []; state.reviewOverall = ''; state.reviewGenuinelyGood = [];
-  document.getElementById('reviewRawIn').value = '';
-  document.getElementById('reviewFlagsWrap').innerHTML = '';
-  document.getElementById('reviewPromptOut').value = '';
-  document.getElementById('updatePromptFieldset').style.display = 'none';
-  clearShareBlock('reviewPromptMsg'); clearShareBlock('reviewParseMsg');
 
   document.getElementById('topic').value = old.topic || '';
   document.getElementById('examType').value = old.examType || '';
@@ -1066,12 +1039,10 @@ function clearShareBlock(containerId){
 
 /* ================= STEP 1 — build prompt ================= */
 var builtPromptText = null;
-var builtReviewPromptText = null;
 var masterPromptText = null;
 function freshState(){
   return { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null, featuredImage:null,
-    contentType:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null, sourceDir:'', sourceName:'',
-    reviewFlags:[], reviewOverall:'', reviewGenuinelyGood:[] };
+    contentType:null, isUpdate:false, oldSeo:null, oldBodyHtml:'', wordpress:null, sourceDir:'', sourceName:'' };
 }
 var state = freshState();
 
@@ -1524,18 +1495,18 @@ Pipeline record-keeping only (never shown to a reader) — a factual summary of 
 If you run out of space and cannot finish, stop cleanly at the end of a complete HTML element — the user will send "continue" and you must resume EXACTLY where you stopped (same block, inside a new code fence, no repetition of anything already written, no fresh introduction).
 `;
 }
-/* ================= REVIEW-THEN-PATCH WORKFLOW =================
+/* ================= AUDIT-THEN-PATCH WORKFLOW =================
    Replaces the old "rewrite everything end-to-end" approach: a full rewrite
    risks losing genuinely good content and re-introduces the exact
-   template-sameness problem this update tool exists to fix. Instead:
-   1. buildReviewPrompt() asks the AI to AUDIT the article — output a
-      structured list of specific problems, no rewriting.
-   2. parseReviewReply()/renderReviewFlags() show that list as an
-      approve/reject checklist — the human decides which flags are real.
-   3. notesUpdateConfig()/buildLongPostRevisionPrompt() then build a SECOND
-      prompt containing ONLY the approved flags, instructing a targeted patch
-      — preserve everything else, including structure and wording,
-      byte-for-byte. */
+   template-sameness problem this update tool exists to fix. Instead,
+   notesUpdateConfig()/buildLongPostRevisionPrompt() build ONE prompt —
+   reviewChecklistBlock()'s failure-pattern checklist plus the old article —
+   and ask the AI to silently audit it, then output the COMPLETE article with
+   ONLY genuine problems fixed, preserving everything else byte-for-byte, all
+   in the SAME reply. (This used to be two separate prompts/round-trips — an
+   audit-only pass the human approved flags from, then a second patch prompt
+   — collapsed into one to cut the copy-pasting in half; the AI's Publisher
+   Notes output is now the audit trail instead of an approve/reject UI.) */
 
 function getTeachingLevel(examTypeRaw){
   const s = String(examTypeRaw||'').toLowerCase();
@@ -1584,21 +1555,13 @@ register that could apply to any grade.
 `;
 }
 
-function buildReviewPrompt(topic, examType, subject, hindiPercent){
-  const oldSeo = state.oldSeo || {};
-  const level = getTeachingLevel(examType);
-  const kind = state.contentType === 'note' ? 'note' : 'long post';
-  return `=== THIS IS AN EDITORIAL REVIEW — NOT A REWRITE. DO NOT REWRITE ANYTHING. ===
-You are auditing an already-published exam-prep ${kind} for real, specific
-problems. Your entire output is a structured audit — do not produce any
-replacement article text.
-
-TOPIC: ${topic}
-EXAM TYPE: ${examType}
-TEACHING LEVEL: ${level} — flag anything pitched at the wrong level for a teacher of this level (e.g. Class 9-12 abstraction in a Primary-teacher article, or overly simplistic content in a PGT article).
-SUBJECT: ${subject}
-${referenceSourcesBlock()}
-CHECK FOR EVERY ONE OF THESE (this site's own known, previously-shipped failure patterns — check all of them, not just the obvious ones):
+// Shared by both the note and long-post update preambles below — this
+// site's own documented failure-pattern list. Audit and patch now happen in
+// ONE prompt/ONE AI exchange (not a separate review-then-approve-then-patch
+// round trip) so there's only one prompt to build and one reply to paste
+// back — half the copy-pasting, and the old article is only ever sent once.
+function reviewChecklistBlock(){
+  return `CHECK FOR EVERY ONE OF THESE (this site's own known, previously-shipped failure patterns — check all of them, not just the obvious ones) AND FIX ANY YOU FIND:
 1. Fabricated/unsourced numbers — any exam-frequency stat, weightage %, or "guaranteed" claim with no real, nameable source behind it.
 2. A "VERIFIED PYQ" that isn't actually sourced to the exam body's own official material — a coaching-site (Testbook/Adda247/PW/EduRev/FreeJobAlert/etc.) repost does NOT count as verified, even if the question is real.
 3. Any source that isn't real and checkable — a plausible-sounding but unverifiable URL, \`href="#"\`, or a vague paraphrase like "official sources" standing in for a real citation. Realness and relevance are the test, not a fixed domain list — official/primary sources are still preferred when there's a real choice.
@@ -1617,177 +1580,36 @@ CHECK FOR EVERY ONE OF THESE (this site's own known, previously-shipped failure 
 16. Unnatural/calque Hindi — a sentence that reads like English translated word-for-word rather than something a Hindi-medium teacher would actually say (e.g. a Schedule "देती है" instead of "होती है").
 17. Template-sameness — the same section skeleton or opening line as this site's other notes on this exam, not shaped to this specific topic.
 Also cross-check every factual claim in the article against the reference sources above (if any were supplied) — flag anything unsupported or contradicted.
-
-ARTICLE UNDER REVIEW:
---- OLD SEO PANEL ---
-${JSON.stringify(oldSeo, null, 2)}
---- OLD BODY ---
-${state.oldBodyHtml}
---- END ARTICLE ---
-
-OUTPUT — exactly this, nothing else, no commentary before or after:
-<<<REVIEW_JSON>>>
-\`\`\`json
-{
-  "overallAssessment": "one honest sentence on the article's overall state",
-  "flags": [
-    {"id": "F1", "location": "e.g. Section 2 intro, or FAQ Q3", "issue": "one of: fabricated-stat, unverifiable-source, generic-seo, thin-content, wrong-level, outdated, placeholder-artifact, factual-error, casual-ai-voice, exam-trap-framing, fourth-wall-break, orphan-citation, missing-visual, missing-internal-link, unnatural-hindi, template-sameness, other", "detail": "quote or precisely describe the exact problem", "suggestedFix": "what should change"}
-  ],
-  "genuinelyGood": ["short bullet list of things that are accurate/well-written and must be preserved exactly as-is"]
-}
-\`\`\`
-<<<END_REVIEW_JSON>>>
-If the article is genuinely clean on some point, don't invent a problem for it just to look thorough — an empty "flags" array is a valid, honest result.`;
+Do NOT invent a problem on a point that's already clean just to look thorough — if a section has no genuine issue, leave it byte-for-byte untouched.`;
 }
 
-/* Parses the <<<REVIEW_JSON>>> reply into state.reviewFlags (each flag gets
-   approved:true by default — human unchecks any they disagree with) and
-   renders the checklist UI. */
-function parseReviewReply(btn){
-  const raw = document.getElementById('reviewRawIn').value;
-  if(!raw.trim()){ show(msg('reviewParseMsg'),'bad',"Paste the AI's review reply first."); return; }
-  const m = raw.match(/<<<REVIEW_JSON>>>([\s\S]*?)<<<END_REVIEW_JSON>>>/);
-  if(!m){ show(msg('reviewParseMsg'),'bad',"Could not find a <<<REVIEW_JSON>>> block in that reply — paste the AI's full review response."); return; }
-  let parsed;
-  try{
-    // Some models wrap their whole answer in an outer code fence and escape
-    // the inner ```json fence with backslashes (\```json ... \```) so it
-    // doesn't prematurely close the outer one — normalize those escaped
-    // backticks to plain ones before stripping the fence markers, otherwise
-    // the stray backslashes are left sitting right next to the JSON.
-    let jsonText = m[1].replace(/\\`/g,'`').replace(/```(?:json)?/g,'').trim();
-    // Some models also escape characters that aren't valid JSON escapes —
-    // e.g. a URL written as "https\://..." (escaping the colon) — which
-    // JSON.parse rejects outright with "Bad escaped character". Strip any
-    // backslash that isn't followed by a valid JSON escape char, leaving the
-    // character itself in place (only removes the stray backslash).
-    const deInvalidEscape = s => s.replace(/\\(?!["\\/bfnrtu])/g, '');
-    try{
-      parsed = JSON.parse(deInvalidEscape(jsonText));
-    }catch(e1){
-      // Fallback: pull out the outermost {...} in case anything else (stray
-      // prose, leftover fence debris) survived the cleanup above.
-      const first = jsonText.indexOf('{'), last = jsonText.lastIndexOf('}');
-      if(first===-1 || last===-1 || last<=first) throw e1;
-      parsed = JSON.parse(deInvalidEscape(jsonText.slice(first, last+1)));
-    }
-  }catch(e){
-    show(msg('reviewParseMsg'),'bad','Found the review block but could not parse its JSON: '+e.message);
-    return;
-  }
-  state.reviewFlags = (parsed.flags||[]).map((f,i)=>({ ...f, id: f.id||('F'+(i+1)), approved: true }));
-  state.reviewOverall = parsed.overallAssessment || '';
-  state.reviewGenuinelyGood = parsed.genuinelyGood || [];
-  renderReviewFlags();
-  if(state.reviewFlags.length === 0){
-    show(msg('reviewParseMsg'),'ok','Review parsed — the AI found no flags. You can still build an update prompt (e.g. to add fresh content), or skip updating this article entirely.');
-  } else {
-    show(msg('reviewParseMsg'),'ok',`Review parsed — ${state.reviewFlags.length} flag(s) found. Review each below, uncheck any you disagree with, then build the update prompt.`);
-  }
-  document.getElementById('updatePromptFieldset').style.display = '';
-}
-function toggleFlag(id, checked){
-  const f = state.reviewFlags.find(x=>x.id===id);
-  if(f) f.approved = checked;
-}
-function renderReviewFlags(){
-  const wrap = document.getElementById('reviewFlagsWrap');
-  if(!state.reviewFlags.length && !state.reviewOverall){ wrap.innerHTML=''; return; }
-  const overall = state.reviewOverall ? `<p class="hint" style="margin-top:0"><b>Overall:</b> ${escBlockTitle(state.reviewOverall)}</p>` : '';
-  const flagsHtml = state.reviewFlags.map(f => `
-    <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line-soft)">
-      <input type="checkbox" checked onchange="toggleFlag('${f.id}', this.checked)" style="width:auto;margin-top:3px">
-      <span>
-        <b>[${escBlockTitle(f.issue||'issue')}]</b> ${escBlockTitle(f.location||'')}<br>
-        <span style="color:var(--ink-soft)">${escBlockTitle(f.detail||'')}</span><br>
-        <span style="font-style:italic">Suggested: ${escBlockTitle(f.suggestedFix||'')}</span>
-      </span>
-    </label>`).join('');
-  const goodHtml = state.reviewGenuinelyGood.length
-    ? `<p class="hint" style="margin-top:10px"><b>Confirmed good (will be preserved):</b> ${state.reviewGenuinelyGood.map(escBlockTitle).join(' · ')}</p>`
-    : '';
-  wrap.innerHTML = overall + flagsHtml + goodHtml;
-}
-// Builds the review prompt, fills reviewPromptOut/builtReviewPromptText and
-// renders the part-copy buttons, but never copies anything itself — callers
-// decide whether to auto-copy (copyReviewPrompt) or always copy (copyWholeReviewPrompt).
-function buildReviewPromptUI(){
-  const topic = document.getElementById('topic').value;
-  const examType = document.getElementById('examType').value.trim();
-  const subject = document.getElementById('subject').value;
-  const hindiPercent = parseInt(document.getElementById('hindiPercent').value, 10);
-  if(!state.contentType){ show(msg('reviewPromptMsg'),'bad','Pick a published post from the list above first.'); return null; }
-  const full = buildReviewPrompt(topic, examType, subject, hindiPercent);
-  const out = document.getElementById('reviewPromptOut');
-  out.value = full;
-  builtReviewPromptText = full;
-  const words = full.trim().split(/\s+/).length;
-  const parts = splitForCopy(full);
-  renderCopyParts('reviewPartsButtons', full, 'reviewPromptMsg');
-  return {full, words, parts};
-}
-async function copyReviewPrompt(btn){
-  const built = buildReviewPromptUI();
-  if(!built) return;
-  const {full, words, parts} = built;
-  if(parts.length > 1){
-    document.getElementById('reviewPartsWrap').open = true;
-    show(msg('reviewPromptMsg'),'ok',`Review prompt built (${words.toLocaleString()} words) — on mobile, use the ${parts.length} "Copy part" buttons below in order instead of copying it all at once. On a PC, "Copy whole prompt" is fine.`);
-  } else {
-    doCopy(full, btn, msg('reviewPromptMsg'), `Review prompt copied (${words.toLocaleString()} words) — paste it into DeepSeek/ChatGPT/Claude, then paste the reply below.`);
-  }
-}
-
-async function copyWholeReviewPrompt(btn){
-  if(!builtReviewPromptText){
-    if(!buildReviewPromptUI()) return;
-  }
-  doCopy(builtReviewPromptText, btn, msg('reviewPromptMsg'), 'Whole review prompt copied — fine on a PC clipboard; if it comes out cut off, use the "Copy part" buttons below instead.');
-}
-
-// Feeds the AI the existing published note + ONLY the approved review flags,
-// and demands a targeted patch — preserve everything else byte-for-byte.
-// Same master-prompt HARD BANS/BLOCK-TAG rules still apply below for any
-// new/replaced content, so a patch never re-introduces a banned pattern.
-// oldArticleBlock(): the review prompt already sent the AI the full OLD SEO
-// PANEL + OLD BODY once (see buildReviewPrompt above). Resending both again
-// here — often the single biggest chunk of the whole update prompt — is only
-// necessary if this is a fresh chat that never saw them. When continuing the
-// SAME chat as the review, skip the resend entirely and just point back at
-// what the AI already has in context.
-function oldArticleBlock(oldSeo, continuing){
-  if(continuing){
-    return `OLD SEO PANEL + OLD BODY: use the EXACT SAME article you reviewed earlier in this same chat — do not substitute a different version, a remembered draft, or anything from outside this conversation. If you no longer have it in context, say so instead of guessing, and I'll repaste it.`;
-  }
-  return `OLD SEO PANEL (keep the same slug so this republishes over the same WordPress post — only change SEO fields if a flag above specifically calls for it):
+// oldArticleBlock(): always the full old SEO panel + old body — there's
+// only one prompt now (audit+patch combined), so the AI needs to see the
+// article exactly once, right here.
+function oldArticleBlock(oldSeo){
+  return `OLD SEO PANEL (keep the same slug so this republishes over the same WordPress post — only change SEO fields if you find a genuine problem with one):
 ${JSON.stringify(oldSeo, null, 2)}
 
-OLD BODY (patch this — do not regenerate sections unrelated to the approved flags above):
+OLD BODY (patch this — do not regenerate sections you didn't find a genuine problem in):
 ${state.oldBodyHtml}`;
 }
-function notesUpdateConfig(topic, examType, subject, hindiPercent, continuing){
+function notesUpdateConfig(topic, examType, subject, hindiPercent){
   const oldSeo = state.oldSeo || {};
   const level = getTeachingLevel(examType);
-  const approved = state.reviewFlags.filter(f=>f.approved);
-  const flagsList = approved.length
-    ? approved.map(f=>`- [${f.issue}] ${f.location}: ${f.detail} → ${f.suggestedFix}`).join('\n')
-    : '(none approved — the review found no flags, or you unchecked them all; in this case make no content changes beyond anything explicitly requested separately, and simply reconfirm the article is sound in Publisher Notes)';
-  const goodList = state.reviewGenuinelyGood.length ? state.reviewGenuinelyGood.map(g=>'- '+g).join('\n') : '(none listed)';
-  return `=== THIS IS A TARGETED UPDATE, NOT A FULL REWRITE — READ CAREFULLY ===
-An editorial review already identified SPECIFIC problems in this
-already-published note. Fix ONLY the approved flags below, making the
-smallest change that genuinely fixes each one. Do NOT rewrite, restructure,
-re-voice, or "improve" any section that isn't flagged — preserve the rest of
-the article exactly as it is, including its structure, block layout, and
-wording. This is a patch, not a fresh article.
+  return `=== THIS IS A TARGETED UPDATE — AUDIT THEN PATCH IN THIS SAME REPLY, NOT A FULL REWRITE ===
+You are updating an already-published exam-prep note. First, silently audit
+it against the checklist below — do not output the audit separately, just
+use it to decide what (if anything) genuinely needs fixing. Then, in THIS
+SAME reply, output the COMPLETE article with ONLY the genuine problems you
+found fixed, making the smallest change that genuinely fixes each one. Do
+NOT rewrite, restructure, re-voice, or "improve" any section that isn't
+genuinely broken — preserve the rest of the article exactly as it is,
+including its structure, block layout, and wording. This is a patch, not a
+fresh article.
 
 TEACHING LEVEL: ${level} — any new/replaced content must match this level, same as everything else in the master prompt below.
 
-APPROVED FLAGS TO FIX:
-${flagsList}
-
-CONFIRMED GOOD — DO NOT TOUCH:
-${goodList}
+${reviewChecklistBlock()}
 
 OLD TOPIC: ${topic}
 OLD EXAM TYPE: ${examType}
@@ -1795,14 +1617,15 @@ OLD SUBJECT: ${subject}
 TARGET_YEAR: 2026 (locked, same as before)
 LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}% — applies to explanations/tricks/teacher-talk prose only, same rule as the master prompt below.
 
-${oldArticleBlock(oldSeo, continuing)}
+${oldArticleBlock(oldSeo)}
 
 === END OLD NOTE — output the COMPLETE article (patched sections + everything preserved) using the full pipeline output format below. The master prompt rules below still govern any new/replaced content. ===
-REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if a flag suggests a different one.
+REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if you'd otherwise want a different one.
+In Publisher Notes, list exactly what you changed and why, one line per fix — do not list anything you left untouched. If you found nothing genuinely wrong, say so plainly instead of inventing a change.
 
 `;
 }
-async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent, continuing){
+async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
   let master = await loadMasterPrompt();
   // v13.md's {{REFERENCE_SOURCES_BLOCK}} slot is left empty here — update-factory
   // already prepends its own reference-sources block separately (see buildPrompt()
@@ -1833,42 +1656,37 @@ async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent, c
     }
   }catch(e){ console.warn('PromptAssembler failed — sending the untrimmed master prompt as-is.', e); }
 
-  return notesUpdateConfig(topic, examType, subject, hindiPercent, continuing) + master + notesOutputContract();
+  return notesUpdateConfig(topic, examType, subject, hindiPercent) + master + notesOutputContract();
 }
 
 /* Long-post revision: buildLongPostPrompt() above is left completely
    untouched (it's the exact prompt long-post-factory/index.html uses to
-   create a fresh post) — this wraps it with the same approved-flags-only
-   patch framing notesUpdateConfig() uses for notes, so both content types
-   get equivalent, non-destructive update treatment. */
-async function buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, year, continuing){
+   create a fresh post) — this wraps it with the same audit-then-patch
+   framing notesUpdateConfig() uses for notes, so both content types get
+   equivalent, non-destructive, single-prompt update treatment. */
+async function buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, year){
   const oldSeo = state.oldSeo || {};
   const level = getTeachingLevel(examType);
-  const approved = state.reviewFlags.filter(f=>f.approved);
-  const flagsList = approved.length
-    ? approved.map(f=>`- [${f.issue}] ${f.location}: ${f.detail} → ${f.suggestedFix}`).join('\n')
-    : '(none approved — the review found no flags, or you unchecked them all; make no content changes beyond anything explicitly requested separately, and reconfirm the article is sound in Publisher Notes)';
-  const goodList = state.reviewGenuinelyGood.length ? state.reviewGenuinelyGood.map(g=>'- '+g).join('\n') : '(none listed)';
-  const preamble = `=== THIS IS A TARGETED UPDATE, NOT A FULL REWRITE — READ CAREFULLY ===
-An editorial review already identified SPECIFIC problems in this
-already-published long post. Fix ONLY the approved flags below, making the
-smallest change that genuinely fixes each one. Do NOT rewrite, restructure,
-re-voice, or "improve" any section that isn't flagged — preserve the rest of
-the article exactly as it is, including its structure, block layout, and
-wording. This is a patch, not a fresh article.
+  const preamble = `=== THIS IS A TARGETED UPDATE — AUDIT THEN PATCH IN THIS SAME REPLY, NOT A FULL REWRITE ===
+You are updating an already-published exam-prep long post. First, silently
+audit it against the checklist below — do not output the audit separately,
+just use it to decide what (if anything) genuinely needs fixing. Then, in
+THIS SAME reply, output the COMPLETE post with ONLY the genuine problems you
+found fixed, making the smallest change that genuinely fixes each one. Do
+NOT rewrite, restructure, re-voice, or "improve" any section that isn't
+genuinely broken — preserve the rest of the article exactly as it is,
+including its structure, block layout, and wording. This is a patch, not a
+fresh article.
 
 TEACHING LEVEL: ${level} — any new/replaced content must match this level, same as everything else in the prompt below.
 
-APPROVED FLAGS TO FIX:
-${flagsList}
+${reviewChecklistBlock()}
 
-CONFIRMED GOOD — DO NOT TOUCH:
-${goodList}
-
-${oldArticleBlock(oldSeo, continuing)}
+${oldArticleBlock(oldSeo)}
 
 === END OLD POST — output the COMPLETE post (patched sections + everything preserved) using the full pipeline output format below. The prompt rules below still govern any new/replaced content. ===
-REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if a flag suggests a different one.
+REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if you'd otherwise want a different one.
+In Publisher Notes, list exactly what you changed and why, one line per fix — do not list anything you left untouched. If you found nothing genuinely wrong, say so plainly instead of inventing a change.
 
 `;
   return preamble + await buildLongPostPrompt(topic, examType, subject, hindiPercent, year);
@@ -1897,10 +1715,9 @@ async function buildPrompt(){
   state.topic = topic; state.examType = examType; state.subject = subject; state.hindiPercent = hindiPercent;
   saveDraft();
   const refs = referenceSourcesBlock();
-  const continuing = !!document.getElementById('continueSameChat').checked;
   const base = state.contentType === 'note'
-    ? await buildNoteRevisionPrompt(topic, examType, subject, hindiPercent, continuing)
-    : await buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, 2026, continuing);
+    ? await buildNoteRevisionPrompt(topic, examType, subject, hindiPercent)
+    : await buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, 2026);
   return refs + base;
 }
 
