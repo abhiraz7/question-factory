@@ -495,11 +495,21 @@
           "section-3-pedagogy": 1,
           "section-6-comparison": 1,
           "section-8-conclusion": 1,
-          "faq-learning-disabilities": 1
+          "faq-learning-disabilities": 1,
+          "meaning and process": 1,
+          "thorndike": 1,
+          "classical and operant conditioning": 1,
+          "bandura and gestalt": 1,
+          "comparison": 1,
+          "classroom use": 1,
+          "ctet context and practice questions": 1,
+          "rapid revision": 1,
+          "faq": 1,
+          "references": 1
         },
         "structuralDivergenceFromHistory": 1,
-        "structuralRepetitiveness": 0.01799357462903073,
-        "sectionCountEwma": 4.59,
+        "structuralRepetitiveness": 0.010936381301957843,
+        "sectionCountEwma": 9.49,
         "sampleSize": 3
       },
       "coverage": null,
@@ -560,5 +570,5 @@
       "sampleSize": 1
     }
   },
-  "generatedAt": "2026-10-08T02:50:05.494Z"
+  "generatedAt": "2026-10-10T15:54:33.277Z"
 }
