@@ -238,6 +238,51 @@ jobs:
               fi
             fi
 
+            # Featured image: an optional companion file the browser tool commits
+            # alongside the JSON (pending-notes/<slug>.<ext>) once the user pastes
+            # an externally-generated image back into the app — this workflow
+            # never generates images itself, only uploads what's already there.
+            # Upload it to the WP media library, tag it with the SEO alt text,
+            # and remember its URL/id so the payload below can wire it in as the
+            # featured image. Mirrors pub-lpost.yml.
+            media_id=""
+            media_url=""
+            img_file=""
+            img_ext=""
+            for ext in jpg jpeg png webp; do
+              if [ -f "pending-notes/$slug.$ext" ]; then
+                img_file="pending-notes/$slug.$ext"
+                img_ext="$ext"
+                break
+              fi
+            done
+            if [ -n "$img_file" ]; then
+              content_type="image/jpeg"
+              case "$img_ext" in
+                png) content_type="image/png" ;;
+                webp) content_type="image/webp" ;;
+              esac
+              media_http="$(curl -sS -o /tmp/media-response.json -w "%{http_code}" \
+                -X POST "${WP_SITE_URL%/}/wp-json/wp/v2/media" \
+                -H "Content-Disposition: attachment; filename=\"$slug-featured.$img_ext\"" \
+                -H "Content-Type: $content_type" \
+                -u "$WP_USERNAME:$WP_APP_PASSWORD" \
+                --data-binary "@$img_file" || echo "000")"
+              if [ "$media_http" = "201" ]; then
+                media_id="$(jq -r '.id' /tmp/media-response.json)"
+                media_url="$(jq -r '.source_url' /tmp/media-response.json)"
+                echo "✔ Featured image uploaded: id=$media_id  $media_url"
+                alt_text="$(jq -r '.seo.imageAltText // ""' "$f")"
+                curl -sS -o /dev/null -X POST "${WP_SITE_URL%/}/wp-json/wp/v2/media/$media_id" \
+                  -H "Content-Type: application/json" \
+                  -u "$WP_USERNAME:$WP_APP_PASSWORD" \
+                  --data-binary "$(jq -n --arg alt "$alt_text" '{alt_text:$alt, title:$alt}')" >/dev/null || true
+              else
+                echo "::warning::$slug — featured image upload failed (HTTP $media_http), continuing without it."
+                cat /tmp/media-response.json || true
+              fi
+            fi
+
             # Wrap the body in Gutenberg Custom-HTML block markup so the editor
             # shows ONE proper Custom HTML block (the only block type that renders
             # the inline-styled cards verbatim) instead of unstructured classic
@@ -263,6 +308,9 @@ jobs:
             } | if .title == null or .title == "" then .title = .slug else . end
               | if ($exam|length) > 0 then .exam = $exam else . end
               | if ($subj|length) > 0 then .subject = $subj else . end' "$f")"
+            if [ -n "$media_id" ]; then
+              payload="$(echo "$payload" | jq --argjson mid "$media_id" '. + {featured_media: $mid}')"
+            fi
 
             # Update runs PUT to the existing post (keeps its ID/link, WP bumps
             # modified date); fresh notes POST to create. Same payload either way,
@@ -358,11 +406,20 @@ jobs:
               verb="Draft created"; [ -n "$update_post_id" ] && verb="Existing post updated"
               echo "✔ $verb: id=$post_id  $post_link"
               jq --argjson id "$post_id" --arg link "$post_link" \
+                 --arg mediaId "${media_id:-}" --arg mediaUrl "$media_url" \
                  --arg at "$(date -u +%FT%TZ)" \
-                 '. + {wordpress: {postId: $id, link: $link, publishedAt: $at, status: "draft"}}' \
+                 '. + {wordpress: {postId: $id, link: $link, publishedAt: $at, status: "draft"} + (if $mediaId != "" then {featuredMediaId: ($mediaId|tonumber), featuredMediaUrl: $mediaUrl} else {} end)}' \
                  "$f" > "published-notes/$slug.json"
               git rm -q "$f"
               git add "published-notes/$slug.json"
+              # the image is uploaded to the WP media library either way by this
+              # point (or the upload failed and was already logged above) — the
+              # companion file in pending-notes/ has served its purpose and would
+              # otherwise sit there forever with no matching JSON once this
+              # slug's dedupe guard starts skipping it on future runs.
+              if [ -n "$img_file" ]; then
+                git rm -q "$img_file" 2>/dev/null || true
+              fi
               # Maintain a flat index of published slugs — GitHub Pages can't
               # directory-list, so reporting/index.html reads this file to know
               # which published-notes/*.json files exist (mirrors the same
