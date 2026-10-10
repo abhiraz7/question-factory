@@ -265,6 +265,7 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
     <legend>🔍 1a · Review first — find what's actually wrong</legend>
     <p class="hint" style="margin-top:0">Instead of rewriting the whole article, first ask the AI to audit it against this site's full documented failure-pattern list — fabricated stats, unverifiable sources, generic SEO, casual AI-chatbot voice, exam-trap-first framing, orphan citations, missing visuals/internal links, unnatural Hindi, template-sameness, and more. You approve which flags are real before anything gets rewritten.</p>
     <button class="btn" onclick="tryRun(copyReviewPrompt,this)">🔍 Build REVIEW prompt</button>
+    <button class="btn ghost" onclick="tryRun(copyWholeReviewPrompt,this)">🖥️ Copy whole prompt (PC only)</button>
     <div class="msg" id="reviewPromptMsg"></div>
     <textarea id="reviewPromptOut" style="display:none"></textarea>
     <details id="reviewPartsWrap"><summary>📱 Copy the review prompt in parts (mobile)</summary><div>
@@ -1063,6 +1064,7 @@ function clearShareBlock(containerId){
 
 /* ================= STEP 1 — build prompt ================= */
 var builtPromptText = null;
+var builtReviewPromptText = null;
 var masterPromptText = null;
 function freshState(){
   return { parsed:null, seo:{}, bodyHtml:'', publisherNotes:'', contentMemory:null, topic:'', examType:'', subject:'', hindiPercent:70, validation:null, featuredImage:null,
@@ -1694,15 +1696,25 @@ async function copyReviewPrompt(btn){
   const full = buildReviewPrompt(topic, examType, subject, hindiPercent);
   const out = document.getElementById('reviewPromptOut');
   out.value = full;
+  builtReviewPromptText = full;
   const words = full.trim().split(/\s+/).length;
   const parts = splitForCopy(full);
   renderCopyParts('reviewPartsButtons', full, 'reviewPromptMsg');
   if(parts.length > 1){
     document.getElementById('reviewPartsWrap').open = true;
-    show(msg('reviewPromptMsg'),'ok',`Review prompt built (${words.toLocaleString()} words) — use the ${parts.length} "Copy part" buttons below in order on mobile.`);
+    show(msg('reviewPromptMsg'),'ok',`Review prompt built (${words.toLocaleString()} words) — on mobile, use the ${parts.length} "Copy part" buttons below in order instead of copying it all at once. On a PC, "Copy whole prompt" is fine.`);
   } else {
     doCopy(full, btn, msg('reviewPromptMsg'), `Review prompt copied (${words.toLocaleString()} words) — paste it into DeepSeek/ChatGPT/Claude, then paste the reply below.`);
   }
+}
+
+async function copyWholeReviewPrompt(btn){
+  if(!builtReviewPromptText){
+    show(msg('reviewPromptMsg'),'warn','Building review prompt first…');
+    await copyReviewPrompt(btn);
+    if(!builtReviewPromptText) return;
+  }
+  doCopy(builtReviewPromptText, btn, msg('reviewPromptMsg'), 'Whole review prompt copied — fine on a PC clipboard; if it comes out cut off, use the "Copy part" buttons below instead.');
 }
 
 // Feeds the AI the existing published note + ONLY the approved review flags,
