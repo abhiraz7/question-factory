@@ -281,7 +281,9 @@ if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)
 
   <fieldset id="updatePromptFieldset" style="margin-top:14px;display:none">
     <legend>✍️ 1b · Build the update prompt — approved fixes only</legend>
-    <p class="hint" style="margin-top:0">This hands the AI the original article plus ONLY the flags you approved above, and tells it to make targeted fixes — not rewrite sections that weren't flagged.</p>
+    <p class="hint" style="margin-top:0">This hands the AI ONLY the flags you approved above, and tells it to make targeted fixes — not rewrite sections that weren't flagged.</p>
+    <label style="font-weight:500;margin-top:0"><input type="checkbox" id="continueSameChat" checked style="width:auto;margin-right:6px">I'm continuing in the SAME chat where I sent the review prompt — skip resending the old article (it already saw it above)</label>
+    <p class="hint" id="continueSameChatHint" style="margin-top:4px">Uncheck this only if you're starting a fresh chat (new tab, different AI, or the old one lost context) — then the full old article gets resent so the AI has something to patch.</p>
     <button class="btn" onclick="tryRun(copyPrompt,this)">✍️ Build UPDATE prompt</button>
     <button class="btn ghost" onclick="tryRun(copyWholePrompt,this)">🖥️ Copy whole prompt (PC only)</button>
     <div class="msg" id="pMsg"></div>
@@ -1654,14 +1656,20 @@ function parseReviewReply(btn){
     // backticks to plain ones before stripping the fence markers, otherwise
     // the stray backslashes are left sitting right next to the JSON.
     let jsonText = m[1].replace(/\\`/g,'`').replace(/```(?:json)?/g,'').trim();
+    // Some models also escape characters that aren't valid JSON escapes —
+    // e.g. a URL written as "https\://..." (escaping the colon) — which
+    // JSON.parse rejects outright with "Bad escaped character". Strip any
+    // backslash that isn't followed by a valid JSON escape char, leaving the
+    // character itself in place (only removes the stray backslash).
+    const deInvalidEscape = s => s.replace(/\\(?!["\\/bfnrtu])/g, '');
     try{
-      parsed = JSON.parse(jsonText);
+      parsed = JSON.parse(deInvalidEscape(jsonText));
     }catch(e1){
       // Fallback: pull out the outermost {...} in case anything else (stray
       // prose, leftover fence debris) survived the cleanup above.
       const first = jsonText.indexOf('{'), last = jsonText.lastIndexOf('}');
       if(first===-1 || last===-1 || last<=first) throw e1;
-      parsed = JSON.parse(jsonText.slice(first, last+1));
+      parsed = JSON.parse(deInvalidEscape(jsonText.slice(first, last+1)));
     }
   }catch(e){
     show(msg('reviewParseMsg'),'bad','Found the review block but could not parse its JSON: '+e.message);
@@ -1741,7 +1749,23 @@ async function copyWholeReviewPrompt(btn){
 // and demands a targeted patch — preserve everything else byte-for-byte.
 // Same master-prompt HARD BANS/BLOCK-TAG rules still apply below for any
 // new/replaced content, so a patch never re-introduces a banned pattern.
-function notesUpdateConfig(topic, examType, subject, hindiPercent){
+// oldArticleBlock(): the review prompt already sent the AI the full OLD SEO
+// PANEL + OLD BODY once (see buildReviewPrompt above). Resending both again
+// here — often the single biggest chunk of the whole update prompt — is only
+// necessary if this is a fresh chat that never saw them. When continuing the
+// SAME chat as the review, skip the resend entirely and just point back at
+// what the AI already has in context.
+function oldArticleBlock(oldSeo, continuing){
+  if(continuing){
+    return `OLD SEO PANEL + OLD BODY: use the EXACT SAME article you reviewed earlier in this same chat — do not substitute a different version, a remembered draft, or anything from outside this conversation. If you no longer have it in context, say so instead of guessing, and I'll repaste it.`;
+  }
+  return `OLD SEO PANEL (keep the same slug so this republishes over the same WordPress post — only change SEO fields if a flag above specifically calls for it):
+${JSON.stringify(oldSeo, null, 2)}
+
+OLD BODY (patch this — do not regenerate sections unrelated to the approved flags above):
+${state.oldBodyHtml}`;
+}
+function notesUpdateConfig(topic, examType, subject, hindiPercent, continuing){
   const oldSeo = state.oldSeo || {};
   const level = getTeachingLevel(examType);
   const approved = state.reviewFlags.filter(f=>f.approved);
@@ -1771,18 +1795,14 @@ OLD SUBJECT: ${subject}
 TARGET_YEAR: 2026 (locked, same as before)
 LANGUAGE MIX: Hindi ${hindiPercent}% + English ${100-hindiPercent}% — applies to explanations/tricks/teacher-talk prose only, same rule as the master prompt below.
 
-OLD SEO PANEL (keep the same slug so this republishes over the same WordPress post — only change SEO fields if a flag above specifically calls for it):
-${JSON.stringify(oldSeo, null, 2)}
-
-OLD BODY (patch this — do not regenerate sections unrelated to the approved flags above):
-${state.oldBodyHtml}
+${oldArticleBlock(oldSeo, continuing)}
 
 === END OLD NOTE — output the COMPLETE article (patched sections + everything preserved) using the full pipeline output format below. The master prompt rules below still govern any new/replaced content. ===
 REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if a flag suggests a different one.
 
 `;
 }
-async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
+async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent, continuing){
   let master = await loadMasterPrompt();
   // v13.md's {{REFERENCE_SOURCES_BLOCK}} slot is left empty here — update-factory
   // already prepends its own reference-sources block separately (see buildPrompt()
@@ -1813,7 +1833,7 @@ async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
     }
   }catch(e){ console.warn('PromptAssembler failed — sending the untrimmed master prompt as-is.', e); }
 
-  return notesUpdateConfig(topic, examType, subject, hindiPercent) + master + notesOutputContract();
+  return notesUpdateConfig(topic, examType, subject, hindiPercent, continuing) + master + notesOutputContract();
 }
 
 /* Long-post revision: buildLongPostPrompt() above is left completely
@@ -1821,7 +1841,7 @@ async function buildNoteRevisionPrompt(topic, examType, subject, hindiPercent){
    create a fresh post) — this wraps it with the same approved-flags-only
    patch framing notesUpdateConfig() uses for notes, so both content types
    get equivalent, non-destructive update treatment. */
-async function buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, year){
+async function buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, year, continuing){
   const oldSeo = state.oldSeo || {};
   const level = getTeachingLevel(examType);
   const approved = state.reviewFlags.filter(f=>f.approved);
@@ -1845,11 +1865,7 @@ ${flagsList}
 CONFIRMED GOOD — DO NOT TOUCH:
 ${goodList}
 
-OLD SEO PANEL (keep the same slug so this republishes over the same WordPress post — only change SEO fields if a flag above specifically calls for it):
-${JSON.stringify(oldSeo, null, 2)}
-
-OLD BODY (patch this — do not regenerate sections unrelated to the approved flags above):
-${state.oldBodyHtml}
+${oldArticleBlock(oldSeo, continuing)}
 
 === END OLD POST — output the COMPLETE post (patched sections + everything preserved) using the full pipeline output format below. The prompt rules below still govern any new/replaced content. ===
 REMINDER: the slug in your new SEO panel MUST be exactly "${oldSeo.slug || ''}" — do not change it even if a flag suggests a different one.
@@ -1881,9 +1897,10 @@ async function buildPrompt(){
   state.topic = topic; state.examType = examType; state.subject = subject; state.hindiPercent = hindiPercent;
   saveDraft();
   const refs = referenceSourcesBlock();
+  const continuing = !!document.getElementById('continueSameChat').checked;
   const base = state.contentType === 'note'
-    ? await buildNoteRevisionPrompt(topic, examType, subject, hindiPercent)
-    : await buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, 2026);
+    ? await buildNoteRevisionPrompt(topic, examType, subject, hindiPercent, continuing)
+    : await buildLongPostRevisionPrompt(topic, examType, subject, hindiPercent, 2026, continuing);
   return refs + base;
 }
 
